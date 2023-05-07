@@ -1,3 +1,4 @@
+# Wireframe_naive.py
 import numpy as np
 import Quaternion_naive as quat
 

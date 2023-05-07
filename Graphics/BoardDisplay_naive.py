@@ -3,6 +3,8 @@ import Wireframe_naive as wf
 import pygame
 from operator import itemgetter
 import readSensor_naive as rs
+import Quaternion_naive as quat
+import math
 
 class ProjectionViewer:
     """ Displays 3D objects on a Pygame screen """
@@ -28,9 +30,12 @@ class ProjectionViewer:
                     sensorInstance.close()
             self.clock.tick(loopRate)
             data = sensorInstance.getSerialData()
-            angularVeloctiy = [data[0], data[1], data[2]]
-            self.wireframe.quatRotate(angularVeloctiy, 1/loopRate)
             attitude = [data[6], data[7], data[8]]
+            yaw_rad = math.radians(attitude[0])
+            pitch_rad = math.radians(attitude[1])
+            roll_rad = math.radians(attitude[2])
+            # Update the quaternion based on the attitude data (yaw, pitch, roll)
+            self.wireframe.quaternion.q = quat.euler_to_quaternion(yaw_rad, pitch_rad, roll_rad)
             self.display(attitude)
             pygame.display.flip()
 

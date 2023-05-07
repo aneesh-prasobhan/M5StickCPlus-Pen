@@ -1,3 +1,4 @@
+# Quaternion_naive.py
 import numpy as np
 
 
@@ -58,3 +59,20 @@ class Quaternion:
     def normalizeQuat(self, q):
         mag = (q[0]**2 + q[1]**2 + q[2]**2 + q[3]**2)**0.5
         return q / mag
+    
+
+def euler_to_quaternion(yaw, pitch, roll):
+    cy = np.cos(yaw * 0.5)
+    sy = np.sin(yaw * 0.5)
+    cp = np.cos(pitch * 0.5)
+    sp = np.sin(pitch * 0.5)
+    cr = np.cos(roll * 0.5)
+    sr = np.sin(roll * 0.5)
+
+    q = np.zeros(4)
+    q[0] = cy * cp * cr + sy * sp * sr
+    q[1] = cy * cp * sr - sy * sp * cr
+    q[2] = sy * cp * sr + cy * sp * cr
+    q[3] = sy * cp * cr - cy * sp * sr
+
+    return q
