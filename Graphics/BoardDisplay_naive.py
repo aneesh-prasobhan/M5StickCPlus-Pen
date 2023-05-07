@@ -1,3 +1,4 @@
+# BoardDisplay_naive.py
 import Wireframe_naive as wf
 import pygame
 from operator import itemgetter
@@ -19,7 +20,7 @@ class ProjectionViewer:
     def run(self, sensorInstance):
         """ Create a pygame screen until it is closed. """
         running = True
-        loopRate = 50
+        loopRate = 60
         while running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -28,17 +29,18 @@ class ProjectionViewer:
             self.clock.tick(loopRate)
             data = sensorInstance.getSerialData()
             angularVeloctiy = [data[0], data[1], data[2]]
-            
             self.wireframe.quatRotate(angularVeloctiy, 1/loopRate)
-            self.display()
+            attitude = [data[6], data[7], data[8]]
+            self.display(attitude)
             pygame.display.flip()
 
-    def display(self):
+    def display(self, attitude):
         """ Draw the wireframes on the screen. """
         self.screen.fill(self.background)
 
         # Get the current attitude
-        yaw, pitch, roll = self.wireframe.getAttitude()
+        # yaw, pitch, roll = self.wireframe.getAttitude()
+        yaw, pitch, roll = attitude
         self.messageDisplay("Yaw: %.1f" % yaw,
                             self.screen.get_width()*0.75,
                             self.screen.get_height()*0,

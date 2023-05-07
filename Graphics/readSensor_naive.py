@@ -85,8 +85,9 @@ class SerialRead:
             if i in [3, 4, 5]:
                 value = value / 100.0
             
-            # No conversion needed for quaternion values (i == 6, 7, 8)
-            
+            if i in [6, 7, 8]:
+                value = value / 100.0 
+                        
             self.data[i] = value
         return self.data
 
