@@ -1,5 +1,6 @@
 
 #include <M5StickCPlus.h>
+#define RESET_BUTTON_PIN GPIO_NUM_39
 
 float accX = 0.0F;
 float accY = 0.0F;
@@ -17,8 +18,27 @@ float gyroOffsetX = 0;
 float gyroOffsetY = 0;
 float gyroOffsetZ = 0;
 
+void IRAM_ATTR reset_isr(void *arg) 
+{
+    esp_restart();
+}
 
-void setup() {
+void setupGpio() {
+    gpio_config_t io_conf;
+    io_conf.intr_type = GPIO_INTR_NEGEDGE;
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pin_bit_mask = (1ULL << RESET_BUTTON_PIN);
+    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
+    gpio_config(&io_conf);
+
+    gpio_install_isr_service(0);
+    gpio_isr_handler_add(RESET_BUTTON_PIN, reset_isr, NULL);
+}
+
+void setup() 
+{   
+    setupGpio();
     M5.begin();             // Init M5StickC Plus.
     M5.Imu.Init();          // Init IMU.  
     M5.Lcd.setRotation(3);  // Rotate the screen. 
@@ -33,7 +53,7 @@ void setup() {
     //Setup Serial
     Serial.begin(115200);
 
-    M5.IMU.CalibrateGyro(10);
+    M5.IMU.CalibrateGyro(20);
     M5.IMU.getCalibData(&gyroOffsetX, &gyroOffsetY, &gyroOffsetZ);  // Get gyro offsets after calibration
 
 }
@@ -64,21 +84,20 @@ void loop() {
     M5.Lcd.setCursor(30, 95);
     M5.Lcd.printf("Temperature : %.2f C", temp);
 
-        // Print Gyro data
-    Serial.print("Gyro x,y,z: ");
-    Serial.print(gyroX);
-    Serial.print(", ");
-    Serial.print(gyroY);
-    Serial.print(", ");
-    Serial.println(gyroZ);
+    // Assuming the following order: gyroX, gyroY, gyroZ, accX, accY, accZ
+    int16_t gyroXInt = gyroX * 100;  // Convert float to int16_t by multiplying by 100
+    int16_t gyroYInt = gyroY * 100;
+    int16_t gyroZInt = gyroZ * 100;
+    int16_t accXInt = accX * 100;
+    int16_t accYInt = accY * 100;
+    int16_t accZInt = accZ * 100;
 
-    // Print Accel data
-    Serial.print("Acc x,y,z: ");
-    Serial.print(accX);
-    Serial.print(", ");
-    Serial.print(accY);
-    Serial.print(", ");
-    Serial.println(accZ);
+    Serial.write((uint8_t *)&gyroXInt, 2);
+    Serial.write((uint8_t *)&gyroYInt, 2);
+    Serial.write((uint8_t *)&gyroZInt, 2);
+    Serial.write((uint8_t *)&accXInt, 2);
+    Serial.write((uint8_t *)&accYInt, 2);
+    Serial.write((uint8_t *)&accZInt, 2);
 
-    delay(50);
+    // delay(50);
 }
