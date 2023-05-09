@@ -69,6 +69,7 @@ void loop() {
     
     M5.IMU.getAccelData(&accX, &accY, &accZ);
     M5.IMU.getAhrsData(&pitch, &roll, &yaw);
+    // define sampleFreq 110.0f in library for this to work with correct scaling as per current sampling rate with serial print 
     M5.IMU.getTempData(&temp);
     M5.Lcd.setCursor(30, 40);
     M5.Lcd.printf("%6.2f  %6.2f  %6.2f      ", gyroX, gyroY, gyroZ);
@@ -92,9 +93,9 @@ void loop() {
     int16_t accYInt = accY * 100;
     int16_t accZInt = accZ * 100;
 
-    int16_t yawInt = yaw * 100;
+    int16_t yawInt = yaw * -100;
     int16_t pitchInt = pitch * 100;
-    int16_t rollInt = roll * 100;
+    int16_t rollInt = roll * -100;
 
     Serial.write((uint8_t *)&gyroXInt, 2);
     Serial.write((uint8_t *)&gyroYInt, 2);
