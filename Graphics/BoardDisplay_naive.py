@@ -52,11 +52,11 @@ class ProjectionViewer:
                             (220, 20, 60))      # Crimson
         self.messageDisplay("Pitch: %.1f" % pitch,
                             self.screen.get_width()*0.75,
-                            self.screen.get_height()*0.05,
+                            self.screen.get_height()*0.075,
                             (0, 255, 255))     # Cyan
         self.messageDisplay("Roll: %.1f" % roll,
                             self.screen.get_width()*0.75,
-                            self.screen.get_height()*0.1,
+                            self.screen.get_height()*0.15,
                             (65, 105, 225))    # Royal Blue
 
         # Transform nodes to perspective view
@@ -129,7 +129,7 @@ class ProjectionViewer:
 def initializeCube():
     block = wf.Wireframe()
 
-    block_nodes = [(x, y, z) for x in (-1.5, 1.5) for y in (-1, 1) for z in (-0.1, 0.1)]
+    block_nodes = [(x, y, z) for x in (-1, 1) for y in (-2, 2) for z in (-0.5, 0.5)]
     node_colors = [(255, 255, 255)] * len(block_nodes)
     block.addNodes(block_nodes, node_colors)
     block.outputNodes()
