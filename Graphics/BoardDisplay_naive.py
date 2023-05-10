@@ -166,6 +166,20 @@ class ProjectionViewer:
         x = p1[0] + t * (p2[0] - p1[0])
         y = p1[1] + t * (p2[1] - p1[1])
         return (x, y)
+    
+    # def find_intersection_point(self, start, end, plane_z):
+    #     x1, y1, z1 = start
+    #     x2, y2, z2 = end
+
+    #     if z1 == z2:  # The line is parallel to the XY plane and doesn't intersect
+    #         return None
+
+    #     # Calculate the intersection point using the line equation: (x-x1)/(x2-x1) = (y-y1)/(y2-y1) = (z-z1)/(z2-z1)
+    #     t = (plane_z - z1) / (z2 - z1)
+    #     x = x1 + t * (x2 - x1)
+    #     y = y1 + t * (y2 - y1)
+
+    #     return (x, y)
 
 
 def initializeCube():
