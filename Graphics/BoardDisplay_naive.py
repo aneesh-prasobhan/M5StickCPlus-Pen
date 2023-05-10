@@ -6,6 +6,10 @@ import readSensor_naive as rs
 import Quaternion_naive as quat
 import math
 
+import os
+from PIL import Image, ImageDraw
+from io import BytesIO
+
 class ProjectionViewer:
     """ Displays 3D objects on a Pygame screen """
     def __init__(self, width, height, wireframe):
@@ -18,6 +22,9 @@ class ProjectionViewer:
         self.clock = pygame.time.Clock()
         pygame.font.init()
         self.font = pygame.font.SysFont('Comic Sans MS', 30)
+        self.xy_plane = self.create_xy_plane(300, 300, 2)
+        self.intersection_points = []
+
 
     def run(self, sensorInstance):
         """ Create a pygame screen until it is closed. """
@@ -92,6 +99,23 @@ class ProjectionViewer:
                          pvNodes[face.nodeIndexes[3]]]
             pygame.draw.polygon(self.screen, face.color, pointList)
 
+        # Calculate the intersection point
+        axis_start_node = self.wireframe.nodes[-2]
+        axis_end_node = self.wireframe.nodes[-1]
+        new_start_coord = self.wireframe.rotatePoint([axis_start_node.x, axis_start_node.y, axis_start_node.z])
+        new_end_coord = self.wireframe.rotatePoint([axis_end_node.x, axis_end_node.y, axis_end_node.z])
+
+        intersection_point = self.find_intersection_point(new_start_coord, new_end_coord, -4)
+        if intersection_point is not None:
+            self.intersection_points.append(intersection_point)
+
+        # Create the image from the intersection points and display it on the screen
+        image = create_image_from_coordinates(self.intersection_points)
+        image_width, image_height = image.size
+        pygame_surface = pygame.image.frombuffer(image.tobytes(), (image_width, image_height), 'RGB')
+        self.screen.blit(pygame_surface, (0, 0))
+        
+    
     # One vanishing point perspective view algorithm
     def projectOnePointPerspective(self, x, y, z, win_width, win_height, P, S, scaling_constant, pvDepth):
         # In Pygame, the y axis is downward pointing.
@@ -125,6 +149,24 @@ class ProjectionViewer:
         textRect = textSurface.get_rect()
         textRect.topleft = (x, y)
         self.screen.blit(textSurface, textRect)
+        
+    def create_xy_plane(self, width, height, distance):
+        nodes = [(x, y, -distance) for x in (-width/2, width/2) for y in (-height/2, height/2)]
+        faces = [(0, 1, 3, 2)]
+        colors = [(200, 200, 200)]
+        plane = wf.Wireframe()
+        plane.addNodes(nodes, colors)
+        plane.addFaces(faces, colors)
+        return plane
+
+    def find_intersection_point(self, p1, p2, z_plane):
+        if p1[2] == p2[2]:
+            return None
+        t = (z_plane - p1[2]) / (p2[2] - p1[2])
+        x = p1[0] + t * (p2[0] - p1[0])
+        y = p1[1] + t * (p2[1] - p1[1])
+        return (x, y)
+
 
 def initializeCube():
     block = wf.Wireframe()
@@ -140,6 +182,13 @@ def initializeCube():
     block.outputFaces()
 
     return block
+
+# Function to create image from coordinates
+def create_image_from_coordinates(coordinates, image_size=(300, 300), line_width=3):
+    image = Image.new("RGB", image_size, "white")
+    draw = ImageDraw.Draw(image)
+    draw.line(coordinates, fill="black", width=line_width)
+    return image
 
 
 if __name__ == '__main__':
