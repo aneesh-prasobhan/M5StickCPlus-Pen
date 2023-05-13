@@ -22,7 +22,7 @@ class ProjectionViewer:
         self.clock = pygame.time.Clock()
         pygame.font.init()
         self.font = pygame.font.SysFont('Comic Sans MS', 30)
-        self.xy_plane = self.create_xy_plane(300, 300, 2)
+        self.xy_plane = self.create_xy_plane(300, 300, 0.1)
         self.intersection_points = []
 
 
@@ -99,13 +99,37 @@ class ProjectionViewer:
                          pvNodes[face.nodeIndexes[3]]]
             pygame.draw.polygon(self.screen, face.color, pointList)
 
+
+        ## For the Axis line through the middle of the cube
+        # Calculate the midpoints of the yellow and cyan faces
+        yellow_face = self.wireframe.faces[5]
+        cyan_face = self.wireframe.faces[4]
+
+        yellow_midpoint = [(self.wireframe.nodes[i].x + self.wireframe.nodes[j].x) / 2 for i, j in zip(yellow_face.nodeIndexes[:2], yellow_face.nodeIndexes[2:])]
+        cyan_midpoint = [(self.wireframe.nodes[i].x + self.wireframe.nodes[j].x) / 2 for i, j in zip(cyan_face.nodeIndexes[:2], cyan_face.nodeIndexes[2:])]
+
+        # Create two points along the line that passes through the midpoints
+        axis_start = [(y + c) / 2 for y, c in zip(yellow_midpoint, cyan_midpoint)] + [0]  # Add Z-coordinate
+        axis_direction = [(y - c) for y, c in zip(yellow_midpoint, cyan_midpoint)] + [0]  # Add Z-coordinate
+        axis_end = [start * direction for start, direction in zip(axis_start, axis_direction)]
+
+        # Transform and draw the white axis line
+        axis_start_transformed = self.projectOthorgraphic(*self.wireframe.convertToComputerFrame(self.wireframe.rotatePoint(axis_start)),
+                                                        self.screen.get_width(), self.screen.get_height(), 70, [])
+        axis_end_transformed = self.projectOthorgraphic(*self.wireframe.convertToComputerFrame(self.wireframe.rotatePoint(axis_end)),
+                                                        self.screen.get_width(), self.screen.get_height(), 70, [])
+
+        pygame.draw.line(self.screen, (255, 255, 255), axis_start_transformed, axis_end_transformed, 2)
+
+
+
         # Calculate the intersection point
         axis_start_node = self.wireframe.nodes[-2]
         axis_end_node = self.wireframe.nodes[-1]
         new_start_coord = self.wireframe.rotatePoint([axis_start_node.x, axis_start_node.y, axis_start_node.z])
         new_end_coord = self.wireframe.rotatePoint([axis_end_node.x, axis_end_node.y, axis_end_node.z])
 
-        intersection_point = self.find_intersection_point(new_start_coord, new_end_coord, -4)
+        intersection_point = self.find_intersection_point(new_start_coord, new_end_coord, -1)
         if intersection_point is not None:
             self.intersection_points.append(intersection_point)
 
@@ -198,7 +222,7 @@ def initializeCube():
     return block
 
 # Function to create image from coordinates
-def create_image_from_coordinates(coordinates, image_size=(300, 300), line_width=3):
+def create_image_from_coordinates(coordinates, image_size=(100, 100), line_width=3):
     image = Image.new("RGB", image_size, "white")
     draw = ImageDraw.Draw(image)
     draw.line(coordinates, fill="black", width=line_width)
