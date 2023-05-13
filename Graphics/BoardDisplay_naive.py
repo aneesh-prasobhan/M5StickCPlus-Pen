@@ -8,10 +8,11 @@ import math
 
 class ProjectionViewer:
     """ Displays 3D objects on a Pygame screen """
-    def __init__(self, width, height, wireframe):
+    def __init__(self, width, height, wireframe, plane ):
         self.width = width
         self.height = height
         self.wireframe = wireframe
+        self.plane = plane
         self.screen = pygame.display.set_mode((width, height))
         pygame.display.set_caption('Attitude Determination using Quaternions')
         self.background = (10,10,50)
@@ -37,6 +38,7 @@ class ProjectionViewer:
             # Update the quaternion based on the attitude data (yaw, pitch, roll)
             self.wireframe.quaternion.q = quat.euler_to_quaternion(yaw_rad, pitch_rad, roll_rad)
             self.display(attitude)
+            self.displayPlane()  # Display the fixed orange plane
             pygame.display.flip()
 
     def display(self, attitude):
@@ -92,6 +94,22 @@ class ProjectionViewer:
                          pvNodes[face.nodeIndexes[3]]]
             pygame.draw.polygon(self.screen, face.color, pointList)
 
+    def displayPlane(self):
+        pvNodes = []
+        for node in self.plane.nodes:
+            point = [node.x, node.y, node.z]
+            comFrameCoord = self.wireframe.convertToComputerFrame(point)
+            pvNodes.append(self.projectOthorgraphic(comFrameCoord[0], comFrameCoord[1], comFrameCoord[2],
+                                                    self.screen.get_width(), self.screen.get_height(),
+                                                    70, [node.z]))
+
+        face = self.plane.faces[0]
+        pointList = [pvNodes[face.nodeIndexes[0]],
+                     pvNodes[face.nodeIndexes[1]],
+                     pvNodes[face.nodeIndexes[2]],
+                     pvNodes[face.nodeIndexes[3]]]
+        pygame.draw.polygon(self.screen, face.color, pointList)
+        
     # One vanishing point perspective view algorithm
     def projectOnePointPerspective(self, x, y, z, win_width, win_height, P, S, scaling_constant, pvDepth):
         # In Pygame, the y axis is downward pointing.
@@ -112,12 +130,13 @@ class ProjectionViewer:
         # This will result in y' = -y and z' = -z
         xPrime = x
         yPrime = -y
+        zPrime = z + 5
         xProjected = xPrime * scaling_constant + win_width / 2
         yProjected = yPrime * scaling_constant + win_height / 2
         # Note that there is no negative sign here because our rotation to computer frame
         # assumes that the computer frame is x-right, y-up, z-out
         # so this z-coordinate below is already in the outward direction
-        pvDepth.append(z)
+        pvDepth.append(zPrime)
         return (round(xProjected), round(yProjected))
 
     def messageDisplay(self, text, x, y, color):
@@ -141,6 +160,18 @@ def initializeCube():
 
     return block
 
+def initializePlane():
+    plane = wf.Wireframe()
+
+    plane_nodes = [(x, y, 3) for x in (-10, 10) for y in (-20, 20)]
+    plane_colors = [(255, 165, 0)] * len(plane_nodes)  # Light orange color
+    plane.addNodes(plane_nodes, plane_colors)
+
+    plane_face = (0, 1, 3, 2)
+    plane.addFaces([plane_face], [(255, 165, 0)])  # Light orange color
+
+    return plane
+
 
 if __name__ == '__main__':
     # portName = 'COM4'
@@ -152,5 +183,6 @@ if __name__ == '__main__':
     s.readSerialStart()  # starts background thread
 
     block = initializeCube()
-    pv = ProjectionViewer(640, 480, block)
+    plane = initializePlane()
+    pv = ProjectionViewer(1200, 800, block, plane)
     pv.run(s)
