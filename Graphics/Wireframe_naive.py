@@ -16,6 +16,11 @@ class Face:
         self.nodeIndexes = nodes
         self.color = color
 
+class Edge:
+    def __init__(self, start, end):
+        self.start = start
+        self.end = end
+
 # Wireframe stores the details of a block
 class Wireframe:
     def __init__(self):
@@ -59,3 +64,16 @@ class Wireframe:
             print("Color: (%d, %d, %d)" % (face.color[0], face.color[1], face.color[2]))
             for nodeIndex in face.nodeIndexes:
                 print("\tNode %d" % nodeIndex)
+                
+    def addEdges(self, edgeList):
+        for (start, end) in edgeList:
+            self.edges.append(Edge(start, end))
+    
+    def calculateMidpoint(self, face):
+        x = sum(self.nodes[i].x for i in face.nodeIndexes) / 4
+        y = sum(self.nodes[i].y for i in face.nodeIndexes) / 4
+        z = sum(self.nodes[i].z for i in face.nodeIndexes) / 4
+        return (x, y, z)
+    
+    def setQuaternion(self, q):
+        self.quaternion.q = q

@@ -8,12 +8,14 @@ import math
 
 class ProjectionViewer:
     """ Displays 3D objects on a Pygame screen """
-    def __init__(self, width, height, wireframe, plane ):
+    def __init__(self, width, height, wireframe, plane, line):
         self.width = width
         self.height = height
         self.wireframe = wireframe
         self.plane = plane
+        self.line = line
         self.screen = pygame.display.set_mode((width, height))
+        
         pygame.display.set_caption('Attitude Determination using Quaternions')
         self.background = (10,10,50)
         self.clock = pygame.time.Clock()
@@ -39,6 +41,7 @@ class ProjectionViewer:
             self.wireframe.quaternion.q = quat.euler_to_quaternion(yaw_rad, pitch_rad, roll_rad)
             self.display(attitude)
             self.displayPlane()  # Display the fixed orange plane
+            self.displayLine()  # Display the line
             pygame.display.flip()
 
     def display(self, attitude):
@@ -109,7 +112,23 @@ class ProjectionViewer:
                      pvNodes[face.nodeIndexes[2]],
                      pvNodes[face.nodeIndexes[3]]]
         pygame.draw.polygon(self.screen, face.color, pointList)
-        
+
+    def displayLine(self):
+        self.line.setQuaternion(self.wireframe.quaternion.q)
+        pvNodes = []
+        pvDepth = []
+        for i, node in enumerate(self.line.nodes):
+            point = [node.x, node.y, node.z]
+            newCoord = self.line.rotatePoint(point)
+            comFrameCoord = self.line.convertToComputerFrame(newCoord)
+            pvNodes.append(self.projectOthorgraphic(comFrameCoord[0], comFrameCoord[1], comFrameCoord[2],
+                                                    self.screen.get_width(), self.screen.get_height(),
+                                                    70, pvDepth))
+
+        for edge in self.line.edges:
+            pygame.draw.line(self.screen, (255, 255, 255), pvNodes[edge.start], pvNodes[edge.end], 2)
+
+     
     # One vanishing point perspective view algorithm
     def projectOnePointPerspective(self, x, y, z, win_width, win_height, P, S, scaling_constant, pvDepth):
         # In Pygame, the y axis is downward pointing.
@@ -149,10 +168,13 @@ def initializeCube():
     block = wf.Wireframe()
 
     block_nodes = [(x, y, z) for x in (-1, 1) for y in (-2, 2) for z in (-0.5, 0.5)]
+
+    
     node_colors = [(255, 255, 255)] * len(block_nodes)
     block.addNodes(block_nodes, node_colors)
     block.outputNodes()
 
+    # Magenta, Red, Green, Blue, Cyan, Yellow
     faces = [(0, 2, 6, 4), (0, 1, 3, 2), (1, 3, 7, 5), (4, 5, 7, 6), (2, 3, 7, 6), (0, 1, 5, 4)]
     colors = [(255, 0, 255), (255, 0, 0), (0, 255, 0), (0, 0, 255), (0, 255, 255), (255, 255, 0)]
     block.addFaces(faces, colors)
@@ -172,6 +194,32 @@ def initializePlane():
 
     return plane
 
+def initializeLine(cuboid):
+    line = wf.Wireframe()
+
+    # Calculate the midpoints of the yellow and cyan faces.
+    yellow_face = cuboid.faces[5]  # Change these indices to match your yellow and cyan faces.
+    cyan_face = cuboid.faces[4]
+    yellow_mid = cuboid.calculateMidpoint(yellow_face)
+    cyan_mid = cuboid.calculateMidpoint(cyan_face)
+
+    # Calculate the direction of the line.
+    direction = (cyan_mid[0] - yellow_mid[0], cyan_mid[1] - yellow_mid[1], cyan_mid[2] - yellow_mid[2])
+
+    # Create two points far enough along the line in both directions from the midpoint.
+    factor = 1000  # Change this factor to adjust the length of the line.
+    line_start = (yellow_mid[0] - factor * direction[0], yellow_mid[1] - factor * direction[1], yellow_mid[2] - factor * direction[2])
+    line_end = (cyan_mid[0] + factor * direction[0], cyan_mid[1] + factor * direction[1], cyan_mid[2] + factor * direction[2])
+
+    line_nodes = [line_start, line_end]
+    line_colors = [(255, 255, 255)] * len(line_nodes)  # Change this to set the color of the line.
+    line.addNodes(line_nodes, line_colors)
+
+    line_edges = [(0, 1)]
+    line.addEdges(line_edges)
+
+    return line
+
 
 if __name__ == '__main__':
     # portName = 'COM4'
@@ -184,5 +232,6 @@ if __name__ == '__main__':
 
     block = initializeCube()
     plane = initializePlane()
-    pv = ProjectionViewer(1200, 800, block, plane)
+    line = initializeLine(block)
+    pv = ProjectionViewer(1200, 800, block, plane, line)
     pv.run(s)
