@@ -185,7 +185,7 @@ def initializeCube():
 def initializePlane():
     plane = wf.Wireframe()
 
-    plane_nodes = [(x, y, 3) for x in (-10, 10) for y in (-20, 20)]
+    plane_nodes = [(x, y, 6) for x in (-10, 10) for y in (-20, 20)]
     plane_colors = [(255, 165, 0)] * len(plane_nodes)  # Light orange color
     plane.addNodes(plane_nodes, plane_colors)
 
@@ -207,7 +207,7 @@ def initializeLine(cuboid):
     direction = (cyan_mid[0] - yellow_mid[0], cyan_mid[1] - yellow_mid[1], cyan_mid[2] - yellow_mid[2])
 
     # Create two points far enough along the line in both directions from the midpoint.
-    factor = 1000  # Change this factor to adjust the length of the line.
+    factor = 10  # Change this factor to adjust the length of the line.
     line_start = (yellow_mid[0] - factor * direction[0], yellow_mid[1] - factor * direction[1], yellow_mid[2] - factor * direction[2])
     line_end = (cyan_mid[0] + factor * direction[0], cyan_mid[1] + factor * direction[1], cyan_mid[2] + factor * direction[2])
 
@@ -233,5 +233,5 @@ if __name__ == '__main__':
     block = initializeCube()
     plane = initializePlane()
     line = initializeLine(block)
-    pv = ProjectionViewer(1200, 800, block, plane, line)
+    pv = ProjectionViewer(800, 1000, block, plane, line)
     pv.run(s)
