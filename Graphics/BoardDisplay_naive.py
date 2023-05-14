@@ -117,6 +117,8 @@ class ProjectionViewer:
         self.line.setQuaternion(self.wireframe.quaternion.q)
         pvNodes = []
         pvDepth = []
+        comFrameCoords = []  # Store 3D coordinates of line points
+
         for i, node in enumerate(self.line.nodes):
             point = [node.x, node.y, node.z]
             newCoord = self.line.rotatePoint(point)
@@ -125,38 +127,33 @@ class ProjectionViewer:
                                                     self.screen.get_width(), self.screen.get_height(),
                                                     70, pvDepth))
 
-            # Add print statements to check start and end points of the line
-            # print(f"Line point {i+1}: x={node.x}, y={node.y}, z={node.z}")
-            #integer
-            # print(f"Line point {i+1}: x={int(node.x)}, y={int(node.y)}, z={int(node.z)}")
-            # print(f"Line point {i+1} after rotation: x={newCoord[0]}, y={newCoord[1]}, z={newCoord[2]}")
-            # print(f"Line point {i+1} in computer frame: x={comFrameCoord[0]}, y={comFrameCoord[1]}, z={comFrameCoord[2]}")
-            # print point in computer frame as integer
-            print(f"Line point {i+1} in computer frame: x={int(comFrameCoord[0])}, y={int(comFrameCoord[1])}, z={int(comFrameCoord[2])}") 
-            
+            # Store 3D coordinates for intersection calculations
+            comFrameCoords.append(comFrameCoord)
 
         for edge in self.line.edges:
             pygame.draw.line(self.screen, (255, 255, 255), pvNodes[edge.start], pvNodes[edge.end], 2)
 
-        # Plane equation parameters for Ax + By + Cz + D = 0
-        A, B, C, D = 0, 1, 0, -6  # As your plane is parallel to XZ with y = 6
 
-        P0 = pvNodes[0]
-        P1 = pvNodes[1]
-        #print P0 and P1 in integer
-        # print(f'P0: {P0}')
-        # print(f'P1: {P1}')
+        # Plane equation parameters for y = 6
+        y_plane = 6
 
-        # print(f"Checking if line is parallel to plane: P1[1] - P0[1] = {P1[1] - P0[1]}")
-        if P1[1] - P0[1] != 0:  # This avoids the division by zero error
-            t = -(D + B * P0[1]) / (B * (P1[1] - P0[1]))
-            P_intersect = [P0[i] + t * (P1[i] - P0[i]) for i in range(2)]
-            
-            # print(f'Intersection at x={P_intersect[0]}, y={P_intersect[1]} on the plane')
-        # else:
-            # print("Line is parallel to plane, no intersection.")
-
+        # Get the start and end points of the line in 3D space
+        P0 = comFrameCoords[0]
+        P1 = comFrameCoords[1]
         
+        # Check if the line is parallel to the plane
+        if P1[1] - P0[1] != 0:  # This avoids the division by zero error
+            t = (y_plane - P0[1]) / (P1[1] - P0[1])
+            if 0 <= t <= 1:  # This checks if the intersection point is within the line segment
+                P_intersect = [P0[i] + t * (P1[i] - P0[i]) for i in range(3)]
+                
+                print(f'Intersection at x={P_intersect[0]}, y={P_intersect[1]}, z={P_intersect[2]} on the plane')
+            else:
+                print("No intersection within the line segment.")
+        else:
+            print("Line is parallel to plane, no intersection.")
+            
+            
     # One vanishing point perspective view algorithm
     def projectOnePointPerspective(self, x, y, z, win_width, win_height, P, S, scaling_constant, pvDepth):
         # In Pygame, the y axis is downward pointing.
