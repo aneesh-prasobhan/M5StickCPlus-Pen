@@ -251,7 +251,7 @@ if __name__ == '__main__':
     # portName = 'COM6'
     # baudRate = 115200
     dataNumBytes = 2  # number of bytes of 1 data point
-    numParams = 9  # number of plots in 1 graph
+    numParams = 10  # number of plots in 1 graph
     s = rs.SerialRead(dataNumBytes=dataNumBytes, numParams=numParams)  # initializes all required variables
     s.readSerialStart()  # starts background thread
 

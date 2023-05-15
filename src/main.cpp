@@ -1,6 +1,10 @@
 
 #include <M5StickCPlus.h>
 #define RESET_BUTTON_PIN GPIO_NUM_39
+#define BIG_BUTTON_PIN GPIO_NUM_37
+
+bool bigButtonPressed = true;
+bool bigButtonReleased = false;
 
 float accX = 0.0F;
 float accY = 0.0F;
@@ -28,12 +32,15 @@ void setupGpio() {
     io_conf.intr_type = GPIO_INTR_NEGEDGE;
     io_conf.mode = GPIO_MODE_INPUT;
     io_conf.pin_bit_mask = (1ULL << RESET_BUTTON_PIN);
+    // for big button
+    io_conf.pin_bit_mask |= (1ULL << BIG_BUTTON_PIN);
     io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
     io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
     gpio_config(&io_conf);
 
     gpio_install_isr_service(0);
     gpio_isr_handler_add(RESET_BUTTON_PIN, reset_isr, NULL);
+    // gpio_isr_handler_add(BIG_BUTTON_PIN, writing_isr, NULL);
 }
 
 void setup() 
@@ -43,18 +50,30 @@ void setup()
     M5.Imu.Init();          // Init IMU.  
     M5.Lcd.setRotation(3);  // Rotate the screen. 
     M5.Lcd.fillScreen(BLACK);
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.setCursor(80, 15);  // set the cursor location. 
-    M5.Lcd.println("IMU TEST");
-    M5.Lcd.setCursor(30, 30);
-    M5.Lcd.println("  X       Y       Z");
-    M5.Lcd.setCursor(30, 70);
-    M5.Lcd.println("  Pitch   Roll    Yaw");
+    M5.Lcd.setTextSize(6);
+    M5.Lcd.setTextColor(RED);
+    M5.Lcd.setCursor(0, 0);  // set the cursor location.
+    M5.Lcd.print("DONT  ");
+    M5.Lcd.println("MOVE");
+    delay(2000);
+    M5.Lcd.fillScreen(BLACK);
+    M5.Lcd.setCursor(0, 0);
+    M5.Lcd.println("CALIB. 20sec");
     //Setup Serial
     Serial.begin(115200);
 
     M5.IMU.CalibrateGyro(20);
     M5.IMU.getCalibData(&gyroOffsetX, &gyroOffsetY, &gyroOffsetZ);  // Get gyro offsets after calibration
+
+    M5.Lcd.fillScreen(BLACK);
+    M5.Lcd.setTextSize(1);
+    M5.Lcd.setTextColor(WHITE, BLACK);
+    M5.Lcd.setCursor(80, 15);  // set the cursor location. 
+    M5.Lcd.println("PEN TEST");
+    M5.Lcd.setCursor(30, 30);
+    M5.Lcd.println("  X       Y       Z");
+    M5.Lcd.setCursor(30, 70);
+    M5.Lcd.println("  Pitch   Roll    Yaw");
 
 }
 
@@ -107,4 +126,12 @@ void loop() {
     Serial.write((uint8_t *)&pitchInt, 2);
     Serial.write((uint8_t *)&rollInt, 2);
     // delay(50);
+    // if BIG Button is pressed, send 1  or 0 if not pressed
+    if (digitalRead(BIG_BUTTON_PIN) == 0) {
+        Serial.write((uint8_t *)&bigButtonPressed, 2);
+        M5.Lcd.fillRect(220, 0, 20, 135, GREEN);
+    } else {
+        Serial.write((uint8_t *)&bigButtonReleased, 2);
+        M5.Lcd.fillRect(220, 0, 20, 135, RED);
+    }
 }
