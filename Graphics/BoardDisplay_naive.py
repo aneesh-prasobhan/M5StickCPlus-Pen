@@ -34,6 +34,9 @@ class ProjectionViewer:
             self.clock.tick(loopRate)
             data = sensorInstance.getSerialData()
             attitude = [data[6], data[7], data[8]]
+            
+            isWriting = data[9]
+
             yaw_rad = math.radians(attitude[0])
             pitch_rad = math.radians(attitude[1])
             roll_rad = math.radians(attitude[2])
@@ -41,7 +44,7 @@ class ProjectionViewer:
             self.wireframe.quaternion.q = quat.euler_to_quaternion(yaw_rad, pitch_rad, roll_rad)
             self.display(attitude)
             self.displayPlane()  # Display the fixed orange plane
-            self.displayLine()  # Display the line
+            self.displayLine(isWriting)  # Display the line
             pygame.display.flip()
 
     def display(self, attitude):
@@ -113,7 +116,7 @@ class ProjectionViewer:
                      pvNodes[face.nodeIndexes[3]]]
         pygame.draw.polygon(self.screen, face.color, pointList)
 
-    def displayLine(self):
+    def displayLine(self, isWriting):
         self.line.setQuaternion(self.wireframe.quaternion.q)
         pvNodes = []
         pvDepth = []
@@ -144,14 +147,14 @@ class ProjectionViewer:
         # Check if the line is parallel to the plane
         if P1[1] - P0[1] != 0:  # This avoids the division by zero error
             t = (y_plane - P0[1]) / (P1[1] - P0[1])
-            if 0 <= t <= 1:  # This checks if the intersection point is within the line segment
+            if (0 <= t <= 1) and isWriting:  # This checks if the intersection point is within the line segment
                 P_intersect = [P0[i] + t * (P1[i] - P0[i]) for i in range(3)]
                 
                 print(f'Intersection at x={P_intersect[0]}, y={P_intersect[1]}, z={P_intersect[2]} on the plane')
-            else:
-                print("No intersection within the line segment.")
-        else:
-            print("Line is parallel to plane, no intersection.")
+        #     else:
+        #         print("No intersection within the line segment.")
+        # else:
+        #     print("Line is parallel to plane, no intersection.")
             
             
     # One vanishing point perspective view algorithm
