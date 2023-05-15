@@ -5,6 +5,7 @@ from operator import itemgetter
 import readSensor_naive as rs
 import Quaternion_naive as quat
 import math
+from vision_test import process_image
 
 class ProjectionViewer:
     """ Displays 3D objects on a Pygame screen """
@@ -156,7 +157,7 @@ class ProjectionViewer:
             if (0 <= t <= 1) and isWriting:  # This checks if the intersection point is within the line segment
                 P_intersect = [P0[i] + t * (P1[i] - P0[i]) for i in range(3)]
                 
-                print(f'Intersection at x={P_intersect[0]}, y={P_intersect[1]}, z={P_intersect[2]} on the plane')
+                # print(f'Intersection at x={P_intersect[0]}, y={P_intersect[1]}, z={P_intersect[2]} on the plane')
 
 
                 # Add the x, z coordinates to the writing data
@@ -165,6 +166,8 @@ class ProjectionViewer:
         # If writing has just stopped, create an image using the writing data
         if self.isWriting_prev and not isWriting:
             self.image_surface = self.createImageFromData()  # Store the generated image surface
+            if self.image_surface:  # Check if an image surface was returned
+                process_image(self.image_surface)  # Process the image with Google Cloud Vision API
             self.write_data = []  # Clear the writing data
             
         self.isWriting_prev = isWriting  # Update the isWriting_prev flag
@@ -180,15 +183,18 @@ class ProjectionViewer:
         max_z = max(point[1] for point in self.write_data)
         
         # Scale and translate the points so that they fit in the rectangle
-        scale_x = 100 / (max_x - min_x)
-        scale_z = 100 / (max_z - min_z)
+        scale_x = 400 / (max_x - min_x)
+        scale_z = 600 / (max_z - min_z)
         translated_and_scaled_data = [(scale_x * (x - min_x), scale_z * (z - min_z)) for x, z in self.write_data]
 
         # Draw the points on a new Surface
-        image_surface = pygame.Surface((100, 100))
+        image_surface = pygame.Surface((400, 600))
         for i in range(len(translated_and_scaled_data) - 1):
             pygame.draw.line(image_surface, (255, 255, 255), translated_and_scaled_data[i], translated_and_scaled_data[i + 1])
 
+        #Rotate image Option
+        image_surface = pygame.transform.rotate(image_surface, 270)
+        
         # Draw the Surface at the top-left corner of the screen
         return image_surface
             
