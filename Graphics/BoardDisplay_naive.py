@@ -235,7 +235,7 @@ def initializeLine(cuboid):
     direction = (cyan_mid[0] - yellow_mid[0], cyan_mid[1] - yellow_mid[1], cyan_mid[2] - yellow_mid[2])
 
     # Create two points far enough along the line in both directions from the midpoint.
-    factor = 10  # Change this factor to adjust the length of the line.
+    factor = 3  # Change this factor to adjust the length of the line.
     line_start = (yellow_mid[0] - factor * direction[0], yellow_mid[1] - factor * direction[1], yellow_mid[2] - factor * direction[2])
     line_end = (cyan_mid[0] + factor * direction[0], cyan_mid[1] + factor * direction[1], cyan_mid[2] + factor * direction[2])
 
