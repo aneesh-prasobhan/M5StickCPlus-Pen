@@ -15,6 +15,9 @@ class ProjectionViewer:
         self.plane = plane
         self.line = line
         self.screen = pygame.display.set_mode((width, height))
+        self.write_data = []  # Added this line
+        self.isWriting_prev = False  # Added this line
+        self.image_surface = None
         
         pygame.display.set_caption('Attitude Determination using Quaternions')
         self.background = (10,10,50)
@@ -99,6 +102,9 @@ class ProjectionViewer:
                          pvNodes[face.nodeIndexes[2]],
                          pvNodes[face.nodeIndexes[3]]]
             pygame.draw.polygon(self.screen, face.color, pointList)
+            
+        if self.image_surface:  # If there is an image surface, blit it onto the screen
+            self.screen.blit(self.image_surface, (0, 0))    
 
     def displayPlane(self):
         pvNodes = []
@@ -151,11 +157,40 @@ class ProjectionViewer:
                 P_intersect = [P0[i] + t * (P1[i] - P0[i]) for i in range(3)]
                 
                 print(f'Intersection at x={P_intersect[0]}, y={P_intersect[1]}, z={P_intersect[2]} on the plane')
-        #     else:
-        #         print("No intersection within the line segment.")
-        # else:
-        #     print("Line is parallel to plane, no intersection.")
+
+
+                # Add the x, z coordinates to the writing data
+                self.write_data.append((P_intersect[0], P_intersect[2]))
+                
+        # If writing has just stopped, create an image using the writing data
+        if self.isWriting_prev and not isWriting:
+            self.image_surface = self.createImageFromData()  # Store the generated image surface
+            self.write_data = []  # Clear the writing data
             
+        self.isWriting_prev = isWriting  # Update the isWriting_prev flag
+
+    def createImageFromData(self):
+        if not self.write_data:  # If there is no data, do nothing
+            return
+
+        # Get the smallest rectangle containing all points
+        min_x = min(point[0] for point in self.write_data)
+        max_x = max(point[0] for point in self.write_data)
+        min_z = min(point[1] for point in self.write_data)
+        max_z = max(point[1] for point in self.write_data)
+        
+        # Scale and translate the points so that they fit in the rectangle
+        scale_x = 100 / (max_x - min_x)
+        scale_z = 100 / (max_z - min_z)
+        translated_and_scaled_data = [(scale_x * (x - min_x), scale_z * (z - min_z)) for x, z in self.write_data]
+
+        # Draw the points on a new Surface
+        image_surface = pygame.Surface((100, 100))
+        for i in range(len(translated_and_scaled_data) - 1):
+            pygame.draw.line(image_surface, (255, 255, 255), translated_and_scaled_data[i], translated_and_scaled_data[i + 1])
+
+        # Draw the Surface at the top-left corner of the screen
+        return image_surface
             
     # One vanishing point perspective view algorithm
     def projectOnePointPerspective(self, x, y, z, win_width, win_height, P, S, scaling_constant, pvDepth):
