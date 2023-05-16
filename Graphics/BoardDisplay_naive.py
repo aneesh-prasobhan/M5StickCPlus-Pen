@@ -183,17 +183,17 @@ class ProjectionViewer:
         max_z = max(point[1] for point in self.write_data)
         
         # Scale and translate the points so that they fit in the rectangle
-        scale_x = 400 / (max_x - min_x)
-        scale_z = 600 / (max_z - min_z)
+        scale_x = 600 / (max_x - min_x)
+        scale_z = 200 / (max_z - min_z)
         translated_and_scaled_data = [(scale_x * (x - min_x), scale_z * (z - min_z)) for x, z in self.write_data]
 
         # Draw the points on a new Surface
-        image_surface = pygame.Surface((400, 600))
+        image_surface = pygame.Surface((600, 200))
         for i in range(len(translated_and_scaled_data) - 1):
             pygame.draw.line(image_surface, (255, 255, 255), translated_and_scaled_data[i], translated_and_scaled_data[i + 1])
 
         #Rotate image Option
-        image_surface = pygame.transform.rotate(image_surface, 270)
+        image_surface = pygame.transform.rotate(image_surface, 0)
         
         # Draw the Surface at the top-left corner of the screen
         return image_surface
