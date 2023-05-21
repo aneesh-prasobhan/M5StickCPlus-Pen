@@ -39,7 +39,7 @@ class ProjectionViewer:
             data = sensorInstance.getSerialData()
             attitude = [data[6], data[7], data[8]]
             
-            isWriting = data[9]
+            isWriting = data[10]
 
             yaw_rad = math.radians(attitude[0])
             pitch_rad = math.radians(attitude[1])
@@ -193,7 +193,7 @@ class ProjectionViewer:
             pygame.draw.line(image_surface, (255, 255, 255), translated_and_scaled_data[i], translated_and_scaled_data[i + 1])
 
         #Rotate image Option
-        image_surface = pygame.transform.rotate(image_surface, 0)
+        image_surface = pygame.transform.rotate(image_surface, 200)
         
         # Draw the Surface at the top-left corner of the screen
         return image_surface
@@ -295,7 +295,7 @@ if __name__ == '__main__':
     # portName = 'COM6'
     # baudRate = 115200
     dataNumBytes = 2  # number of bytes of 1 data point
-    numParams = 10  # number of plots in 1 graph
+    numParams = 11  # number of plots in 1 graph
     s = rs.SerialRead(dataNumBytes=dataNumBytes, numParams=numParams)  # initializes all required variables
     s.readSerialStart()  # starts background thread
 
