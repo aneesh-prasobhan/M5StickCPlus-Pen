@@ -1,10 +1,9 @@
-
+//main.cpp
 #include <M5StickCPlus.h>
 #include "bmm150.h"
 #include "bmm150_defs.h"
 
 BMM150 bmm = BMM150();
-bmm150_mag_data value_offset;
 
 bool bigButtonPressed = true;
 bool bigButtonReleased = false;
@@ -25,11 +24,6 @@ float gyroOffsetX = 0;
 float gyroOffsetY = 0;
 float gyroOffsetZ = 0;
 
-// void IRAM_ATTR reset_isr(void *arg) 
-// {
-//     esp_restart();
-// }
-
 void setupGpio() {
     gpio_config_t io_conf;
     io_conf.intr_type = GPIO_INTR_NEGEDGE;
@@ -41,77 +35,6 @@ void setupGpio() {
     io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
     gpio_config(&io_conf);
 
-    // gpio_install_isr_service(0);
-    // gpio_isr_handler_add(RESET_BUTTON_PIN, reset_isr, NULL);
-    // gpio_isr_handler_add(M5_BUTTON_HOME, writing_isr, NULL);
-}
-
-void calibrate(uint32_t timeout) {
-    int16_t value_x_min = 0;
-    int16_t value_x_max = 0;
-    int16_t value_y_min = 0;
-    int16_t value_y_max = 0;
-    int16_t value_z_min = 0;
-    int16_t value_z_max = 0;
-    uint32_t timeStart  = 0;
-
-    bmm.read_mag_data();
-    value_x_min = bmm.raw_mag_data.raw_datax;
-    value_x_max = bmm.raw_mag_data.raw_datax;
-    value_y_min = bmm.raw_mag_data.raw_datay;
-    value_y_max = bmm.raw_mag_data.raw_datay;
-    value_z_min = bmm.raw_mag_data.raw_dataz;
-    value_z_max = bmm.raw_mag_data.raw_dataz;
-    delay(10);
-
-    timeStart = millis();
-
-    while ((millis() - timeStart) < timeout) {
-        bmm.read_mag_data();
-
-        /* Update x-Axis max/min value */
-        if (value_x_min > bmm.raw_mag_data.raw_datax) {
-            value_x_min = bmm.raw_mag_data.raw_datax;
-            // Serial.print("Update value_x_min: ");
-            // Serial.println(value_x_min);
-
-        } else if (value_x_max < bmm.raw_mag_data.raw_datax) {
-            value_x_max = bmm.raw_mag_data.raw_datax;
-            // Serial.print("update value_x_max: ");
-            // Serial.println(value_x_max);
-        }
-
-        /* Update y-Axis max/min value */
-        if (value_y_min > bmm.raw_mag_data.raw_datay) {
-            value_y_min = bmm.raw_mag_data.raw_datay;
-            // Serial.print("Update value_y_min: ");
-            // Serial.println(value_y_min);
-
-        } else if (value_y_max < bmm.raw_mag_data.raw_datay) {
-            value_y_max = bmm.raw_mag_data.raw_datay;
-            // Serial.print("update value_y_max: ");
-            // Serial.println(value_y_max);
-        }
-
-        /* Update z-Axis max/min value */
-        if (value_z_min > bmm.raw_mag_data.raw_dataz) {
-            value_z_min = bmm.raw_mag_data.raw_dataz;
-            // Serial.print("Update value_z_min: ");
-            // Serial.println(value_z_min);
-
-        } else if (value_z_max < bmm.raw_mag_data.raw_dataz) {
-            value_z_max = bmm.raw_mag_data.raw_dataz;
-            // Serial.print("update value_z_max: ");
-            // Serial.println(value_z_max);
-        }
-
-        Serial.print(".");
-        delay(1);
-    }
-
-    value_offset.x = value_x_min + (value_x_max - value_x_min) / 2;
-    value_offset.y = value_y_min + (value_y_max - value_y_min) / 2;
-    value_offset.z = value_z_min + (value_z_max - value_z_min) / 2;
 }
 
 void setup() 
@@ -149,7 +72,7 @@ void setup()
         M5.Lcd.setCursor(0, 0);
         M5.Lcd.setTextColor(GREEN);
         M5.Lcd.println("MOVE.. 10sec");
-        calibrate(10000);
+        bmm.calibrate(10000);
         Serial.print("\n\rCalibrate done..");
     }
 
@@ -176,14 +99,16 @@ void loop() {
     
     M5.IMU.getAccelData(&accX, &accY, &accZ);
     M5.IMU.getAhrsData(&pitch, &roll, &yaw);
+
+    // define sampleFreq 110.0f in library for this to work with correct scaling as per current sampling rate with serial print 
     
     // Magnetometer Math
     bmm150_mag_data value;
     bmm.read_mag_data();
     
-    value.x = bmm.raw_mag_data.raw_datax - value_offset.x;
-    value.y = bmm.raw_mag_data.raw_datay - value_offset.y;
-    value.z = bmm.raw_mag_data.raw_dataz - value_offset.z;
+    value.x = bmm.raw_mag_data.raw_datax - bmm.value_offset.x;
+    value.y = bmm.raw_mag_data.raw_datay - bmm.value_offset.y;
+    value.z = bmm.raw_mag_data.raw_dataz - bmm.value_offset.z;
 
     float xyHeading = atan2(value.x, value.y);
     // float zxHeading = atan2(value.z, value.x);
@@ -194,8 +119,6 @@ void loop() {
     float headingDegrees   = heading * 180 / M_PI;
     // float xyHeadingDegrees = xyHeading * 180 / M_PI;
     // float zxHeadingDegrees = zxHeading * 180 / M_PI;
-
-    // define sampleFreq 110.0f in library for this to work with correct scaling as per current sampling rate with serial print 
 
     M5.Lcd.setCursor(30, 40);
     M5.Lcd.printf("%6.2f  %6.2f  %6.2f      ", gyroX, gyroY, gyroZ);
@@ -261,7 +184,7 @@ void loop() {
             M5.Lcd.setTextSize(6);
             M5.Lcd.setTextColor(GREEN);
             M5.Lcd.println("MOVE.. 10sec");
-            calibrate(10000);
+            bmm.calibrate(10000);
             Serial.print("\n\rCalibrate done..");
             M5.Lcd.fillScreen(BLACK);
             M5.Lcd.setTextSize(1);

@@ -33,6 +33,62 @@ int8_t BMM150::initialize(void) {
     return BMM150_OK;
 }
 
+void BMM150::calibrate(uint32_t timeout) {
+    int16_t value_x_min = 0;
+    int16_t value_x_max = 0;
+    int16_t value_y_min = 0;
+    int16_t value_y_max = 0;
+    int16_t value_z_min = 0;
+    int16_t value_z_max = 0;
+    uint32_t timeStart  = 0;
+
+    this->read_mag_data();
+    value_x_min = this->raw_mag_data.raw_datax;
+    value_x_max = this->raw_mag_data.raw_datax;
+    value_y_min = this->raw_mag_data.raw_datay;
+    value_y_max = this->raw_mag_data.raw_datay;
+    value_z_min = this->raw_mag_data.raw_dataz;
+    value_z_max = this->raw_mag_data.raw_dataz;
+    delay(10);
+
+    timeStart = millis();
+
+    while ((millis() - timeStart) < timeout) {
+        this->read_mag_data();
+
+        /* Update x-Axis max/min value */
+        if (value_x_min > this->raw_mag_data.raw_datax) {
+            value_x_min = this->raw_mag_data.raw_datax;
+
+        } else if (value_x_max < this->raw_mag_data.raw_datax) {
+            value_x_max = this->raw_mag_data.raw_datax;
+        }
+
+        /* Update y-Axis max/min value */
+        if (value_y_min > this->raw_mag_data.raw_datay) {
+            value_y_min = this->raw_mag_data.raw_datay;
+
+        } else if (value_y_max < this->raw_mag_data.raw_datay) {
+            value_y_max = this->raw_mag_data.raw_datay;
+        }
+
+        /* Update z-Axis max/min value */
+        if (value_z_min > this->raw_mag_data.raw_dataz) {
+            value_z_min = this->raw_mag_data.raw_dataz;
+
+        } else if (value_z_max < this->raw_mag_data.raw_dataz) {
+            value_z_max = this->raw_mag_data.raw_dataz;
+        }
+
+        delay(1);
+    }
+
+    value_offset.x = value_x_min + (value_x_max - value_x_min) / 2;
+    value_offset.y = value_y_min + (value_y_max - value_y_min) / 2;
+    value_offset.z = value_z_min + (value_z_max - value_z_min) / 2;
+}
+
+
 void BMM150::read_mag_data() {
     int16_t msb_data;
     int8_t reg_data[BMM150_XYZR_DATA_LEN] = {0};
