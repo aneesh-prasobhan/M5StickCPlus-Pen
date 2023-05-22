@@ -7,6 +7,17 @@ import Quaternion_naive as quat
 import math
 from vision_test import process_image
 
+yaw_hand = 0 # Set 0 for right hand, 1 for left hand
+
+# This is the offset for reference when the writing starts.
+yaw_offset_left_hand = 95 # For Left Hand (when button pressed with thumb)
+yaw_offset_right_hand = -95 # For Right Hand (when button pressed with thumb)
+
+if yaw_hand == 0:
+    yaw_offset = yaw_offset_right_hand
+else:
+    yaw_offset = yaw_offset_left_hand
+
 class ProjectionViewer:
     """ Displays 3D objects on a Pygame screen """
     def __init__(self, width, height, wireframe, plane, line):
@@ -30,6 +41,8 @@ class ProjectionViewer:
         """ Create a pygame screen until it is closed. """
         running = True
         loopRate = 60
+        reference_yaw = None
+        
         while running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -40,6 +53,19 @@ class ProjectionViewer:
             attitude = [data[6], data[7], data[8]]
             
             isWriting = data[10]
+
+
+            if isWriting and reference_yaw is None:  # Add these lines to store the reference yaw when writing starts
+                reference_yaw = attitude[0]
+
+            if not isWriting:  # Add this line to reset the reference yaw when writing stops
+                reference_yaw = None
+
+            # If a reference yaw is stored, adjust the current yaw relative to the reference yaw
+            if reference_yaw is not None:
+                attitude[0] = (attitude[0] - reference_yaw - yaw_offset) % 360  # The yaw is adjusted so that it's as if we started writing with yaw -90
+
+
 
             yaw_rad = math.radians(attitude[0])
             pitch_rad = math.radians(attitude[1])
