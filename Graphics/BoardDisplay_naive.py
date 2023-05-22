@@ -190,10 +190,10 @@ class ProjectionViewer:
         # Draw the points on a new Surface
         image_surface = pygame.Surface((600, 200))
         for i in range(len(translated_and_scaled_data) - 1):
-            pygame.draw.line(image_surface, (255, 255, 255), translated_and_scaled_data[i], translated_and_scaled_data[i + 1])
+            pygame.draw.line(image_surface, (255, 255, 255), translated_and_scaled_data[i], translated_and_scaled_data[i + 1], width=5)
 
         #Rotate image Option
-        image_surface = pygame.transform.rotate(image_surface, 0)
+        image_surface = pygame.transform.rotate(image_surface, 180)
         
         # Draw the Surface at the top-left corner of the screen
         return image_surface

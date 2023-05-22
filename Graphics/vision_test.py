@@ -13,12 +13,12 @@ from google.cloud.vision_v1 import ImageContext
 coordinates = []
 
 
-# Function to create image from coordinates
-def create_image_from_coordinates(coordinates, image_size=(300, 300), line_width=3):
-    image = Image.new("RGB", image_size, "white")
-    draw = ImageDraw.Draw(image)
-    draw.line(coordinates, fill="black", width=line_width)
-    return image
+# # Function to create image from coordinates
+# def create_image_from_coordinates(coordinates, image_size=(300, 300), line_width=10):
+#     image = Image.new("RGB", image_size, "white")
+#     draw = ImageDraw.Draw(image)
+#     draw.line(coordinates, fill="black", width=line_width)
+#     return image
 
 def process_image(image_surface):
     # Save the pygame.Surface object to a file
