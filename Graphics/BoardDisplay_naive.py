@@ -7,10 +7,12 @@ import Quaternion_naive as quat
 import math
 from vision_test import process_image
 
-yaw_hand = 0 # Set 0 for right hand, 1 for left hand
+yaw_hand = 1 # Set 0 for right hand, 1 for left hand
+text_width = 4 # Set text width for the writing line
+
 
 # This is the offset for reference when the writing starts.
-yaw_offset_left_hand = 95 # For Left Hand (when button pressed with thumb)
+yaw_offset_left_hand = 85 # For Left Hand (when button pressed with thumb)
 yaw_offset_right_hand = -95 # For Right Hand (when button pressed with thumb)
 
 if yaw_hand == 0:
@@ -216,7 +218,7 @@ class ProjectionViewer:
         # Draw the points on a new Surface
         image_surface = pygame.Surface((600, 200))
         for i in range(len(translated_and_scaled_data) - 1):
-            pygame.draw.line(image_surface, (255, 255, 255), translated_and_scaled_data[i], translated_and_scaled_data[i + 1], width=5)
+            pygame.draw.line(image_surface, (255, 255, 255), translated_and_scaled_data[i], translated_and_scaled_data[i + 1], width=text_width)
 
         #Rotate image Option
         image_surface = pygame.transform.rotate(image_surface, 180)
