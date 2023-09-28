@@ -28,7 +28,7 @@ class SerialRead:
 
         print('Trying to connect to: ' + str(serialPort) + ' at ' + str(serialBaud) + ' BAUD.')
         try:
-            self.serialConnection = serial.Serial(serialPort, serialBaud, timeout=4, dsrdtr=True)
+            self.serialConnection = serial.Serial(serialPort, serialBaud, timeout=4, dsrdtr=True, rtscts=False)
 
             print('Connected to ' + str(serialPort) + ' at ' + str(serialBaud) + ' BAUD.')
         except:
@@ -101,7 +101,10 @@ class SerialRead:
             #print(self.rawData)
 
 
-    def close(self):
+    def close(self):        
+        self.serialConnection.dtr = True
+        self.serialConnection.rts = False
+        time.sleep(0.5)  # Give some time for states to settle
         self.isRun = False
         self.thread.join()
         self.serialConnection.close()
