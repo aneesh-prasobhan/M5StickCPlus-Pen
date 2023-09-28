@@ -7,13 +7,13 @@ import Quaternion_naive as quat
 import math
 from vision_test import process_image
 
-portName = 'COM13'  # Define your desired port here
+portName = 'COM8'  # Define your desired port here
 baudRate = 115200  #
     
 yaw_hand = 1 # Set 0 for right hand, 1 for left hand
 text_width = 4 # Set text width for the writing line
 
-desired_language = "en"  # French, or any other language code you want
+desired_language = "en-t-i0-handwrit"  # any other language code you want
 
 # This is the offset for reference when the writing starts.
 yaw_offset_left_hand = 90 # For Left Hand (when button pressed with thumb)

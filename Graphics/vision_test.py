@@ -2,9 +2,8 @@
 import os
 from google.cloud import vision_v1 as vision
 from google.cloud.vision_v1 import AnnotateImageRequest
-from PIL import Image, ImageDraw
+from PIL import Image
 from io import BytesIO
-import matplotlib.pyplot as plt
 import pygame
 from google.cloud.vision_v1 import ImageContext
 
@@ -20,7 +19,7 @@ coordinates = []
 #     draw.line(coordinates, fill="black", width=line_width)
 #     return image
 
-def process_image(image_surface, language="en"):
+def process_image(image_surface, language=None):
     # Save the pygame.Surface object to a file
     pygame.image.save_extended(image_surface, "temp_image.jpg")
 
@@ -46,9 +45,12 @@ def process_image(image_surface, language="en"):
     feature = vision.Feature(type=vision.Feature.Type.TEXT_DETECTION)
     request.features.append(feature)
 
-    # Set the language hint to English
-    image_context = ImageContext(language_hints=[language])
-    request.image_context = image_context
+    # Set the language hint if provided
+    if language:
+        image_context = ImageContext(language_hints=[language])
+        request.image_context = image_context
+        print(f"Using language hint: {language}")
+
     
     print("Sending to API.")
     # Send the request to the API
