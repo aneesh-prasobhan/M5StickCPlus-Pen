@@ -20,7 +20,7 @@ coordinates = []
 #     draw.line(coordinates, fill="black", width=line_width)
 #     return image
 
-def process_image(image_surface):
+def process_image(image_surface, language="en"):
     # Save the pygame.Surface object to a file
     pygame.image.save_extended(image_surface, "temp_image.jpg")
 
@@ -47,7 +47,7 @@ def process_image(image_surface):
     request.features.append(feature)
 
     # Set the language hint to English
-    image_context = ImageContext(language_hints=["en"])
+    image_context = ImageContext(language_hints=[language])
     request.image_context = image_context
     
     print("Sending to API.")

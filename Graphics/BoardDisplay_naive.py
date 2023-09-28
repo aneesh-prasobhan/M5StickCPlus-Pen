@@ -7,13 +7,17 @@ import Quaternion_naive as quat
 import math
 from vision_test import process_image
 
+portName = 'COM13'  # Define your desired port here
+baudRate = 115200  #
+    
 yaw_hand = 1 # Set 0 for right hand, 1 for left hand
 text_width = 4 # Set text width for the writing line
 
+desired_language = "en"  # French, or any other language code you want
 
 # This is the offset for reference when the writing starts.
-yaw_offset_left_hand = 85 # For Left Hand (when button pressed with thumb)
-yaw_offset_right_hand = -95 # For Right Hand (when button pressed with thumb)
+yaw_offset_left_hand = 90 # For Left Hand (when button pressed with thumb)
+yaw_offset_right_hand = -85 # For Right Hand (when button pressed with thumb)
 
 if yaw_hand == 0:
     yaw_offset = yaw_offset_right_hand
@@ -32,6 +36,7 @@ class ProjectionViewer:
         self.write_data = []  # Added this line
         self.isWriting_prev = False  # Added this line
         self.image_surface = None
+        self.language = "en"  # default language
         
         pygame.display.set_caption('Attitude Determination using Quaternions')
         self.background = (10,10,50)
@@ -195,7 +200,7 @@ class ProjectionViewer:
         if self.isWriting_prev and not isWriting:
             self.image_surface = self.createImageFromData()  # Store the generated image surface
             if self.image_surface:  # Check if an image surface was returned
-                process_image(self.image_surface)  # Process the image with Google Cloud Vision API
+                process_image(self.image_surface, self.language)  # Process the image with Google Cloud Vision API
             self.write_data = []  # Clear the writing data
             
         self.isWriting_prev = isWriting  # Update the isWriting_prev flag
@@ -324,11 +329,12 @@ if __name__ == '__main__':
     # baudRate = 115200
     dataNumBytes = 2  # number of bytes of 1 data point
     numParams = 11  # number of plots in 1 graph
-    s = rs.SerialRead(dataNumBytes=dataNumBytes, numParams=numParams)  # initializes all required variables
+    s = rs.SerialRead(serialPort=portName, serialBaud=baudRate, dataNumBytes=dataNumBytes, numParams=numParams)  # initializes all required variables
     s.readSerialStart()  # starts background thread
 
     block = initializeCube()
     plane = initializePlane()
     line = initializeLine(block)
     pv = ProjectionViewer(800, 1000, block, plane, line)
+    pv.language = desired_language
     pv.run(s)
