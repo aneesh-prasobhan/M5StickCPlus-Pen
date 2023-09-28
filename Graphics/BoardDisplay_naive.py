@@ -13,7 +13,7 @@ baudRate = 115200  #
 yaw_hand = 1 # Set 0 for right hand, 1 for left hand
 text_width = 4 # Set text width for the writing line
 
-desired_language = "en-t-i0-handwrit"  # any other language code you want
+desired_language = "en"  # any other language code you want, but "en-t-i0-handwrit" for special en handwritten
 
 # This is the offset for reference when the writing starts.
 yaw_offset_left_hand = 90 # For Left Hand (when button pressed with thumb)

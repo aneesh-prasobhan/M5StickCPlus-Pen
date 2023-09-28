@@ -2,6 +2,7 @@
 #include <M5StickCPlus.h>
 #include "bmm150.h"
 #include "bmm150_defs.h"
+#include <EEPROM.h>
 
 BMM150 bmm = BMM150();
 
@@ -24,6 +25,13 @@ float gyroOffsetX = 0;
 float gyroOffsetY = 0;
 float gyroOffsetZ = 0;
 
+// EEPROM addresses
+const int EEPROM_SIZE = 12;  // 3 floats, 4 bytes each
+const int GYRO_X_ADDRESS = 0;
+const int GYRO_Y_ADDRESS = 4;
+const int GYRO_Z_ADDRESS = 8;
+
+
 void setupGpio() {
     gpio_config_t io_conf;
     io_conf.intr_type = GPIO_INTR_NEGEDGE;
@@ -44,39 +52,73 @@ void setup()
     Wire.begin(0, 26);
     M5.Imu.Init();          // Init IMU.  
     M5.Lcd.setRotation(3);  // Rotate the screen. 
-    M5.Lcd.fillScreen(BLACK);
-    M5.Lcd.setTextSize(6);
-    M5.Lcd.setTextColor(RED);
-    M5.Lcd.setCursor(0, 0);  // set the cursor location.
-    M5.Lcd.print("DONT  ");
-    M5.Lcd.println("MOVE");
-    delay(2000);
-    M5.Lcd.fillScreen(BLACK);
-    M5.Lcd.setCursor(0, 0);
-    M5.Lcd.println("CALIB. 20sec");
-    Serial.begin(115200);
 
-    M5.IMU.CalibrateGyro(20);
-    M5.IMU.getCalibData(&gyroOffsetX, &gyroOffsetY, &gyroOffsetZ);  // Get gyro offsets after calibration
+    EEPROM.begin(EEPROM_SIZE);  // Initialize EEPROM with defined size
 
-
-    if (bmm.initialize() == BMM150_E_ID_NOT_CONFORM) 
+    if (EEPROM.read(GYRO_X_ADDRESS) != 0xFF) // Check if EEPROM contains data (0xFF usually indicates uninitialized EEPROM)
     {
-        Serial.println("Chip ID can not read!");
-        while (1)
-        ;
-    } else 
-    {
-        Serial.println("Initialize done!");
+        gyroOffsetX = EEPROM.readFloat(GYRO_X_ADDRESS);
+        gyroOffsetY = EEPROM.readFloat(GYRO_Y_ADDRESS);
+        gyroOffsetZ = EEPROM.readFloat(GYRO_Z_ADDRESS);
+
         M5.Lcd.fillScreen(BLACK);
-        M5.Lcd.setCursor(0, 0);
+        M5.Lcd.setTextSize(6);
         M5.Lcd.setTextColor(GREEN);
-        M5.Lcd.println("MOVE.. 10sec");
-        bmm.calibrate(10000);
-        Serial.print("\n\rCalibrate done..");
+        M5.Lcd.setCursor(0, 0);
+        M5.Lcd.print("CALIB FOUND");
+        delay(2000);
     }
 
-    
+    else
+    {
+        M5.Lcd.fillScreen(BLACK);
+        M5.Lcd.setTextSize(6);
+        M5.Lcd.setCursor(0, 0);
+        M5.Lcd.setTextColor(ORANGE);
+        M5.Lcd.print("NO CALIB DATA");
+        delay(1000);
+            
+        M5.Lcd.fillScreen(BLACK);
+        M5.Lcd.setTextSize(6);
+        M5.Lcd.setTextColor(RED);
+        M5.Lcd.setCursor(0, 0);  // set the cursor location.
+        M5.Lcd.print("DONT  ");
+        M5.Lcd.println("MOVE");
+        delay(2000);
+        M5.Lcd.fillScreen(BLACK);
+        M5.Lcd.setCursor(0, 0);
+        M5.Lcd.println("CALIB. 20sec");
+        Serial.begin(115200);
+
+        M5.IMU.CalibrateGyro(20);
+        M5.IMU.getCalibData(&gyroOffsetX, &gyroOffsetY, &gyroOffsetZ);  // Get gyro offsets after calibration
+
+        EEPROM.writeFloat(GYRO_X_ADDRESS, gyroOffsetX);
+        EEPROM.writeFloat(GYRO_Y_ADDRESS, gyroOffsetY);
+        EEPROM.writeFloat(GYRO_Z_ADDRESS, gyroOffsetZ);
+        EEPROM.commit();
+
+
+        if (bmm.initialize() == BMM150_E_ID_NOT_CONFORM) 
+        {
+            Serial.println("Chip ID can not read!");
+            while (1)
+            ;
+        } else 
+        {
+            Serial.println("Initialize done!");
+            M5.Lcd.fillScreen(BLACK);
+            M5.Lcd.setCursor(0, 0);
+            M5.Lcd.setTextColor(GREEN);
+            M5.Lcd.println("MOVE.. 10sec");
+            bmm.calibrate(10000);
+            Serial.print("\n\rCalibrate done..");
+        }
+
+
+    }
+
+
     M5.Lcd.fillScreen(BLACK);
     M5.Lcd.setTextSize(1);
     M5.Lcd.setTextColor(WHITE, BLACK);
@@ -182,9 +224,28 @@ void loop() {
             M5.Lcd.fillScreen(BLACK);
             M5.Lcd.setCursor(0, 0);
             M5.Lcd.setTextSize(6);
-            M5.Lcd.setTextColor(GREEN);
-            M5.Lcd.println("MOVE.. 10sec");
-            bmm.calibrate(10000);
+            M5.Lcd.setTextColor(RED);
+            M5.Lcd.setCursor(0, 0);  // set the cursor location.
+            M5.Lcd.print("DONT  ");
+            M5.Lcd.println("MOVE");
+            delay(2000);
+            M5.Lcd.fillScreen(BLACK);
+            M5.Lcd.setCursor(0, 0);
+            M5.Lcd.println("CALIB. 20sec");
+
+            M5.IMU.CalibrateGyro(20);
+            M5.IMU.getCalibData(&gyroOffsetX, &gyroOffsetY, &gyroOffsetZ);  // Get gyro offsets after calibration
+
+
+            EEPROM.writeFloat(GYRO_X_ADDRESS, gyroOffsetX);
+            EEPROM.writeFloat(GYRO_Y_ADDRESS, gyroOffsetY);
+            EEPROM.writeFloat(GYRO_Z_ADDRESS, gyroOffsetZ);
+            EEPROM.commit();
+
+
+            // M5.Lcd.setTextColor(GREEN);
+            // M5.Lcd.println("MOVE.. 10sec");
+            // bmm.calibrate(10000);
             Serial.print("\n\rCalibrate done..");
             M5.Lcd.fillScreen(BLACK);
             M5.Lcd.setTextSize(1);
