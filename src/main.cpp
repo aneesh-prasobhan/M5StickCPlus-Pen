@@ -31,6 +31,12 @@ const int GYRO_X_ADDRESS = 0;
 const int GYRO_Y_ADDRESS = 4;
 const int GYRO_Z_ADDRESS = 8;
 
+// Define new EEPROM addresses for magnetometer calibration data
+const int MAG_CALIB_SIZE = 12;  // 3 floats, 4 bytes each
+const int MAG_CALIB_X_ADDRESS = 12;  // After gyro calibration data
+const int MAG_CALIB_Y_ADDRESS = 16;
+const int MAG_CALIB_Z_ADDRESS = 20;
+
 
 void setupGpio() {
     gpio_config_t io_conf;
@@ -45,6 +51,119 @@ void setupGpio() {
 
 }
 
+bool check_for_gyro_calib() {
+    // Check if gyro calibration data is present in EEPROM
+    if (EEPROM.read(GYRO_X_ADDRESS) != 0xFF) {
+        gyroOffsetX = EEPROM.readFloat(GYRO_X_ADDRESS);
+        gyroOffsetY = EEPROM.readFloat(GYRO_Y_ADDRESS);
+        gyroOffsetZ = EEPROM.readFloat(GYRO_Z_ADDRESS);
+
+        M5.Lcd.fillScreen(BLACK);
+        M5.Lcd.setTextSize(4);
+        M5.Lcd.setTextColor(GREEN);
+        M5.Lcd.setCursor(0, 0);
+        M5.Lcd.print("GYRO CALIB FOUND");
+        delay(2000);
+    } else {
+        M5.Lcd.fillScreen(BLACK);
+        M5.Lcd.setTextSize(4);
+        M5.Lcd.setCursor(0, 0);
+        M5.Lcd.setTextColor(ORANGE);
+        M5.Lcd.print("NO GYRO CALIB DATA");
+        delay(1000);
+    }
+}
+
+bool check_for_mag_calib() {
+    // Check if magnetometer calibration data is present in EEPROM
+    if (EEPROM.read(MAG_CALIB_X_ADDRESS) != 0xFF && EEPROM.read(MAG_CALIB_Y_ADDRESS) != 0xFF && EEPROM.read(MAG_CALIB_Z_ADDRESS) != 0xFF) {
+        // Magnetometer calibration data found
+        M5.Lcd.fillScreen(BLACK);
+        M5.Lcd.setTextSize(4);
+        M5.Lcd.setTextColor(GREEN);
+        M5.Lcd.setCursor(0, 0);
+        M5.Lcd.print("MAG CALIB FOUND");
+        delay(2000);
+        return true;
+    } else {
+        // No magnetometer calibration data found
+        M5.Lcd.fillScreen(BLACK);
+        M5.Lcd.setTextSize(4);
+        M5.Lcd.setCursor(0, 0);
+        M5.Lcd.setTextColor(ORANGE);
+        M5.Lcd.print("NO MAG CALIB DATA");
+        delay(1000);
+        return false;
+    }
+}
+
+void do_gyro_calibration() {
+    // Perform gyro calibration
+
+        
+    M5.Lcd.fillScreen(BLACK);
+    M5.Lcd.setTextSize(4);
+    M5.Lcd.setTextColor(RED);
+    M5.Lcd.setCursor(0, 0);  // set the cursor location.
+    M5.Lcd.print("DONT  ");
+    M5.Lcd.println("MOVE");
+    delay(2000);
+    M5.Lcd.fillScreen(BLACK);
+    M5.Lcd.setCursor(0, 0);
+    M5.Lcd.println("GYRO CALIB. 20sec");
+    Serial.begin(115200);
+
+    M5.IMU.CalibrateGyro(20);
+    M5.IMU.getCalibData(&gyroOffsetX, &gyroOffsetY, &gyroOffsetZ);  // Get gyro offsets after calibration
+
+    EEPROM.writeFloat(GYRO_X_ADDRESS, gyroOffsetX);
+    EEPROM.writeFloat(GYRO_Y_ADDRESS, gyroOffsetY);
+    EEPROM.writeFloat(GYRO_Z_ADDRESS, gyroOffsetZ);
+    EEPROM.commit();
+}
+
+void do_mag_calibration() {
+    // Perform magnetometer calibration
+    if (bmm.initialize() == BMM150_E_ID_NOT_CONFORM) 
+    {
+        Serial.println("Chip ID can not read!");
+        while (1)
+        ;
+    } 
+    else 
+    {
+        Serial.println("Initialize done!");
+        M5.Lcd.fillScreen(BLACK);
+        M5.Lcd.setCursor(0, 0);
+        M5.Lcd.setTextColor(GREEN);
+        M5.Lcd.println("MOVE.. 10sec");
+        bmm.calibrate(10000);
+        Serial.print("\n\rCalibrate done..");
+
+        // Save magnetometer calibration data to EEPROM
+        float magCalibX = bmm.value_offset.x;
+        float magCalibY = bmm.value_offset.y;
+        float magCalibZ = bmm.value_offset.z;
+        EEPROM.put(MAG_CALIB_X_ADDRESS, magCalibX);
+        EEPROM.put(MAG_CALIB_Y_ADDRESS, magCalibY);
+        EEPROM.put(MAG_CALIB_Z_ADDRESS, magCalibZ);
+        EEPROM.commit();
+    }
+}
+
+void display_setup() {
+    // Display other setup components
+    M5.Lcd.fillScreen(BLACK);
+    M5.Lcd.setTextSize(1);
+    M5.Lcd.setTextColor(WHITE, BLACK);
+    M5.Lcd.setCursor(80, 15);  // set the cursor location. 
+    M5.Lcd.println("PEN TEST");
+    M5.Lcd.setCursor(30, 30);
+    M5.Lcd.println("  X       Y       Z");
+    M5.Lcd.setCursor(30, 70);
+    M5.Lcd.println("  Pitch   Roll    Yaw");
+}
+
 void setup() 
 {   
     setupGpio();
@@ -55,79 +174,18 @@ void setup()
 
     EEPROM.begin(EEPROM_SIZE);  // Initialize EEPROM with defined size
 
-    if (EEPROM.read(GYRO_X_ADDRESS) != 0xFF) // Check if EEPROM contains data (0xFF usually indicates uninitialized EEPROM)
-    {
-        gyroOffsetX = EEPROM.readFloat(GYRO_X_ADDRESS);
-        gyroOffsetY = EEPROM.readFloat(GYRO_Y_ADDRESS);
-        gyroOffsetZ = EEPROM.readFloat(GYRO_Z_ADDRESS);
-
-        M5.Lcd.fillScreen(BLACK);
-        M5.Lcd.setTextSize(6);
-        M5.Lcd.setTextColor(GREEN);
-        M5.Lcd.setCursor(0, 0);
-        M5.Lcd.print("CALIB FOUND");
-        delay(2000);
+    // Check for gyro calibration
+    if (!check_for_gyro_calib()) {
+        do_gyro_calibration();
     }
 
-    else
-    {
-        M5.Lcd.fillScreen(BLACK);
-        M5.Lcd.setTextSize(6);
-        M5.Lcd.setCursor(0, 0);
-        M5.Lcd.setTextColor(ORANGE);
-        M5.Lcd.print("NO CALIB DATA");
-        delay(1000);
-            
-        M5.Lcd.fillScreen(BLACK);
-        M5.Lcd.setTextSize(6);
-        M5.Lcd.setTextColor(RED);
-        M5.Lcd.setCursor(0, 0);  // set the cursor location.
-        M5.Lcd.print("DONT  ");
-        M5.Lcd.println("MOVE");
-        delay(2000);
-        M5.Lcd.fillScreen(BLACK);
-        M5.Lcd.setCursor(0, 0);
-        M5.Lcd.println("CALIB. 20sec");
-        Serial.begin(115200);
-
-        M5.IMU.CalibrateGyro(20);
-        M5.IMU.getCalibData(&gyroOffsetX, &gyroOffsetY, &gyroOffsetZ);  // Get gyro offsets after calibration
-
-        EEPROM.writeFloat(GYRO_X_ADDRESS, gyroOffsetX);
-        EEPROM.writeFloat(GYRO_Y_ADDRESS, gyroOffsetY);
-        EEPROM.writeFloat(GYRO_Z_ADDRESS, gyroOffsetZ);
-        EEPROM.commit();
-
-
-        if (bmm.initialize() == BMM150_E_ID_NOT_CONFORM) 
-        {
-            Serial.println("Chip ID can not read!");
-            while (1)
-            ;
-        } else 
-        {
-            Serial.println("Initialize done!");
-            M5.Lcd.fillScreen(BLACK);
-            M5.Lcd.setCursor(0, 0);
-            M5.Lcd.setTextColor(GREEN);
-            M5.Lcd.println("MOVE.. 10sec");
-            bmm.calibrate(10000);
-            Serial.print("\n\rCalibrate done..");
-        }
-
-
+    // Check for magnetometer calibration
+    if (!check_for_mag_calib()) {
+        do_mag_calibration();
     }
 
-
-    M5.Lcd.fillScreen(BLACK);
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.setTextColor(WHITE, BLACK);
-    M5.Lcd.setCursor(80, 15);  // set the cursor location. 
-    M5.Lcd.println("PEN TEST");
-    M5.Lcd.setCursor(30, 30);
-    M5.Lcd.println("  X       Y       Z");
-    M5.Lcd.setCursor(30, 70);
-    M5.Lcd.println("  Pitch   Roll    Yaw");
+    // Display other setup components
+    display_setup();
 
 }
 
@@ -214,49 +272,13 @@ void loop() {
     {
         while (digitalRead(M5_BUTTON_RST) == LOW)
             ;
-        if (bmm.initialize() == BMM150_E_ID_NOT_CONFORM) 
-        {
-            Serial.println("Chip ID can not read!");
-            while (1)
-                ;
-        } else 
-        {
-            M5.Lcd.fillScreen(BLACK);
-            M5.Lcd.setCursor(0, 0);
-            M5.Lcd.setTextSize(6);
-            M5.Lcd.setTextColor(RED);
-            M5.Lcd.setCursor(0, 0);  // set the cursor location.
-            M5.Lcd.print("DONT  ");
-            M5.Lcd.println("MOVE");
-            delay(2000);
-            M5.Lcd.fillScreen(BLACK);
-            M5.Lcd.setCursor(0, 0);
-            M5.Lcd.println("CALIB. 20sec");
+        // Recalibrate gyro if needed
+        do_gyro_calibration();
+        // Recalibrate magnetometer if needed
+        do_mag_calibration();
 
-            M5.IMU.CalibrateGyro(20);
-            M5.IMU.getCalibData(&gyroOffsetX, &gyroOffsetY, &gyroOffsetZ);  // Get gyro offsets after calibration
-
-
-            EEPROM.writeFloat(GYRO_X_ADDRESS, gyroOffsetX);
-            EEPROM.writeFloat(GYRO_Y_ADDRESS, gyroOffsetY);
-            EEPROM.writeFloat(GYRO_Z_ADDRESS, gyroOffsetZ);
-            EEPROM.commit();
-
-
-            // M5.Lcd.setTextColor(GREEN);
-            // M5.Lcd.println("MOVE.. 10sec");
-            // bmm.calibrate(10000);
-            Serial.print("\n\rCalibrate done..");
-            M5.Lcd.fillScreen(BLACK);
-            M5.Lcd.setTextSize(1);
-            M5.Lcd.setTextColor(WHITE, BLACK);
-            M5.Lcd.setCursor(80, 15);  // set the cursor location. 
-            M5.Lcd.println("PEN TEST");
-            M5.Lcd.setCursor(30, 30);
-            M5.Lcd.println("  X       Y       Z");
-            M5.Lcd.setCursor(30, 70);
-            M5.Lcd.println("  Pitch   Roll    Yaw");
-        }
+        // Update display after recalibration
+        display_setup();  
     }
 
 }

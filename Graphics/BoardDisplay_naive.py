@@ -7,7 +7,7 @@ import Quaternion_naive as quat
 import math
 from vision_test import process_image
 
-portName = 'COM8'  # Define your desired port here
+portName = 'COM4'  # Define your desired port here
 baudRate = 115200  #
     
 yaw_hand = 1 # Set 0 for right hand, 1 for left hand
