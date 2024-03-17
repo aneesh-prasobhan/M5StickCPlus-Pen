@@ -6,6 +6,8 @@
 
 BMM150 bmm = BMM150();
 
+bmm150_mag_data value;
+
 bool bigButtonPressed = true;
 bool bigButtonReleased = false;
 
@@ -25,17 +27,21 @@ float gyroOffsetX = 0;
 float gyroOffsetY = 0;
 float gyroOffsetZ = 0;
 
+float magCalibX = 0;
+float magCalibY = 0;
+float magCalibZ = 0;
+
 // EEPROM addresses
-const int EEPROM_SIZE = 12;  // 3 floats, 4 bytes each
+const int EEPROM_SIZE = 30;  // 3 floats, 4 bytes each
 const int GYRO_X_ADDRESS = 0;
 const int GYRO_Y_ADDRESS = 4;
 const int GYRO_Z_ADDRESS = 8;
 
 // Define new EEPROM addresses for magnetometer calibration data
-const int MAG_CALIB_SIZE = 12;  // 3 floats, 4 bytes each
-const int MAG_CALIB_X_ADDRESS = 12;  // After gyro calibration data
-const int MAG_CALIB_Y_ADDRESS = 16;
-const int MAG_CALIB_Z_ADDRESS = 20;
+// const int MAG_CALIB_SIZE = 12;  // 3 floats, 4 bytes each
+const int MAG_CALIB_X_ADDRESS = 15;  // After gyro calibration data
+const int MAG_CALIB_Y_ADDRESS = 20;
+const int MAG_CALIB_Z_ADDRESS = 25;
 
 
 void setupGpio() {
@@ -53,10 +59,20 @@ void setupGpio() {
 
 bool check_for_gyro_calib() {
     // Check if gyro calibration data is present in EEPROM
-    if (EEPROM.read(GYRO_X_ADDRESS) != 0xFF) {
+    if (EEPROM.read(GYRO_X_ADDRESS) != 0xFF) 
+    {
         gyroOffsetX = EEPROM.readFloat(GYRO_X_ADDRESS);
         gyroOffsetY = EEPROM.readFloat(GYRO_Y_ADDRESS);
         gyroOffsetZ = EEPROM.readFloat(GYRO_Z_ADDRESS);
+
+        // Print saved data
+        Serial.println("Gyro calibration data (Read from EEPORM): ");
+        Serial.print("X: ");
+        Serial.println(gyroOffsetX);
+        Serial.print("Y: ");
+        Serial.println(gyroOffsetY);
+        Serial.print("Z: ");
+        Serial.println(gyroOffsetZ);
 
         M5.Lcd.fillScreen(BLACK);
         M5.Lcd.setTextSize(4);
@@ -64,28 +80,55 @@ bool check_for_gyro_calib() {
         M5.Lcd.setCursor(0, 0);
         M5.Lcd.print("GYRO CALIB FOUND");
         delay(2000);
-    } else {
+        return true;
+    } else 
+    {
         M5.Lcd.fillScreen(BLACK);
         M5.Lcd.setTextSize(4);
         M5.Lcd.setCursor(0, 0);
         M5.Lcd.setTextColor(ORANGE);
         M5.Lcd.print("NO GYRO CALIB DATA");
         delay(1000);
+        return false;
     }
 }
 
 bool check_for_mag_calib() {
+
+    if (bmm.initialize() == BMM150_E_ID_NOT_CONFORM) 
+    {
+        Serial.println("Chip ID can not read!");
+        while (1)
+        ;
+    } 
     // Check if magnetometer calibration data is present in EEPROM
-    if (EEPROM.read(MAG_CALIB_X_ADDRESS) != 0xFF && EEPROM.read(MAG_CALIB_Y_ADDRESS) != 0xFF && EEPROM.read(MAG_CALIB_Z_ADDRESS) != 0xFF) {
+    if (EEPROM.read(MAG_CALIB_X_ADDRESS) != 0xFF ) 
+    {  
+        // Set magnetometer calibration data from EEPROM
+        magCalibX = EEPROM.readFloat(MAG_CALIB_X_ADDRESS);
+        magCalibY = EEPROM.readFloat(MAG_CALIB_Y_ADDRESS);
+        magCalibZ = EEPROM.readFloat(MAG_CALIB_Z_ADDRESS);
+
+        // Print saved data
+        Serial.println("Magnetometer calibration data (Read from EEPROM): ");
+        Serial.print("X: ");
+        Serial.println(magCalibX);
+        Serial.print("Y: ");
+        Serial.println(magCalibY);
+        Serial.print("Z: ");
+        Serial.println(magCalibZ);
+        
         // Magnetometer calibration data found
         M5.Lcd.fillScreen(BLACK);
         M5.Lcd.setTextSize(4);
         M5.Lcd.setTextColor(GREEN);
         M5.Lcd.setCursor(0, 0);
         M5.Lcd.print("MAG CALIB FOUND");
+
         delay(2000);
         return true;
-    } else {
+    } else 
+    {
         // No magnetometer calibration data found
         M5.Lcd.fillScreen(BLACK);
         M5.Lcd.setTextSize(4);
@@ -111,15 +154,26 @@ void do_gyro_calibration() {
     M5.Lcd.fillScreen(BLACK);
     M5.Lcd.setCursor(0, 0);
     M5.Lcd.println("GYRO CALIB. 20sec");
-    Serial.begin(115200);
+    
 
     M5.IMU.CalibrateGyro(20);
     M5.IMU.getCalibData(&gyroOffsetX, &gyroOffsetY, &gyroOffsetZ);  // Get gyro offsets after calibration
+
+    //Print Calibration data
+    Serial.println("Gyro calibration data (Just calibrated): ");
+    Serial.print("X: ");
+    Serial.println(gyroOffsetX);
+    Serial.print("Y: ");
+    Serial.println(gyroOffsetY);
+    Serial.print("Z: ");
+    Serial.println(gyroOffsetZ);
 
     EEPROM.writeFloat(GYRO_X_ADDRESS, gyroOffsetX);
     EEPROM.writeFloat(GYRO_Y_ADDRESS, gyroOffsetY);
     EEPROM.writeFloat(GYRO_Z_ADDRESS, gyroOffsetZ);
     EEPROM.commit();
+
+
 }
 
 void do_mag_calibration() {
@@ -140,10 +194,19 @@ void do_mag_calibration() {
         bmm.calibrate(10000);
         Serial.print("\n\rCalibrate done..");
 
+        // Print calibration data
+        Serial.println("Magnetometer calibration data (Just calibrated): ");
+        Serial.print("X: ");
+        Serial.println(bmm.value_offset.x);
+        Serial.print("Y: ");
+        Serial.println(bmm.value_offset.y);
+        Serial.print("Z: ");
+        Serial.println(bmm.value_offset.z);
+
         // Save magnetometer calibration data to EEPROM
-        float magCalibX = bmm.value_offset.x;
-        float magCalibY = bmm.value_offset.y;
-        float magCalibZ = bmm.value_offset.z;
+        magCalibX = bmm.value_offset.x;
+        magCalibY = bmm.value_offset.y;
+        magCalibZ = bmm.value_offset.z;
         EEPROM.put(MAG_CALIB_X_ADDRESS, magCalibX);
         EEPROM.put(MAG_CALIB_Y_ADDRESS, magCalibY);
         EEPROM.put(MAG_CALIB_Z_ADDRESS, magCalibZ);
@@ -203,12 +266,12 @@ void loop() {
     // define sampleFreq 110.0f in library for this to work with correct scaling as per current sampling rate with serial print 
     
     // Magnetometer Math
-    bmm150_mag_data value;
+   
     bmm.read_mag_data();
     
-    value.x = bmm.raw_mag_data.raw_datax - bmm.value_offset.x;
-    value.y = bmm.raw_mag_data.raw_datay - bmm.value_offset.y;
-    value.z = bmm.raw_mag_data.raw_dataz - bmm.value_offset.z;
+    value.x = bmm.raw_mag_data.raw_datax - magCalibX;
+    value.y = bmm.raw_mag_data.raw_datay - magCalibY;
+    value.z = bmm.raw_mag_data.raw_dataz - magCalibZ;
 
     float xyHeading = atan2(value.x, value.y);
     // float zxHeading = atan2(value.z, value.x);
