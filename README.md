@@ -38,6 +38,14 @@ Setup Instructions
         
         `# Google Cloud Vision API setup current_directory = os.path.dirname(os.path.abspath(__file__)) credentials_file_path = os.path.join(current_directory, 'academic-arcade-386319-1032d69b7cc4.json') os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_file_path client = vision.ImageAnnotatorClient() request = AnnotateImageRequest()`
         
+### Requirements
+* python 3.8.10
+* numpy
+* pygame
+* pyserial
+* pandas
+* google-cloud-vision
+* pillow
 
 Contribution
 ------------
