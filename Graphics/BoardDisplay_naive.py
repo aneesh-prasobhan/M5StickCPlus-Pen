@@ -6,18 +6,8 @@ import readSensor_naive as rs
 import Quaternion_naive as quat
 import math
 from vision_test import process_image
+from user_config import *
 
-portName = 'COM3'  # Define your desired port here
-baudRate = 115200  #
-    
-yaw_hand = 1 # Set 0 for right hand, 1 for left hand
-text_width = 4 # Set text width for the writing line
-
-desired_language = "en"  # any other language code you want, but "en-t-i0-handwrit" for special en handwritten
-
-# This is the offset for reference when the writing starts.
-yaw_offset_left_hand = 90 # For Left Hand (when button pressed with thumb)
-yaw_offset_right_hand = -85 # For Right Hand (when button pressed with thumb)
 
 if yaw_hand == 0:
     yaw_offset = yaw_offset_right_hand
