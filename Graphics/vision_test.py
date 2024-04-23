@@ -69,9 +69,10 @@ def process_image(image_surface, language=None):
         image_context = ImageContext(language_hints=[language])
         request.image_context = image_context
         print(f"Using language hint: {language}")
+        print("Sending to Vision API.")
 
     
-    print("Sending to API.")
+    # print("Sending to API.")
     
     # Rebuilding how the Json looks like (not needed)
     # request_json = build_request_json(request)
