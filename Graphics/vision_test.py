@@ -81,13 +81,19 @@ def process_image(image_surface, language=None):
     
     # Send the request to the API
     response = client.annotate_image(request)
-
-    # Iterate through the response
-    for r in response.text_annotations:
+    # Iterate through the response and print only the first full description of the text
+    # Please note that the subsequent text annotations are just the individual words
+    if response.text_annotations:
         d = {
-            'text': r.description
+            'text': response.text_annotations[0].description
         }
         print(d)
 
     # Remove the temporary image file
     os.remove("temp_image.jpg")
+    
+    if response.text_annotations:
+        recognized_text = response.text_annotations[0].description
+        return recognized_text
+    else:
+        return ""

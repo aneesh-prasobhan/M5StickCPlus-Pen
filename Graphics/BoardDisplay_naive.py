@@ -26,7 +26,9 @@ class ProjectionViewer:
         self.write_data = []  # Added this line
         self.isWriting_prev = False  # Added this line
         self.image_surface = None
+        self.recognized_text = ""   
         self.language = "en"  # default language
+    
         
         pygame.display.set_caption('Attitude Determination using Quaternions')
         self.background = (10,10,50)
@@ -190,10 +192,27 @@ class ProjectionViewer:
         if self.isWriting_prev and not isWriting:
             self.image_surface = self.createImageFromData()  # Store the generated image surface
             if self.image_surface:  # Check if an image surface was returned
-                process_image(self.image_surface, self.language)  # Process the image with Google Cloud Vision API
+                self.recognized_text = process_image(self.image_surface, self.language)  # Process the image with Google Cloud Vision API
+ 
+ 
             self.write_data = []  # Clear the writing data
             
         self.isWriting_prev = isWriting  # Update the isWriting_prev flag
+
+
+        if self.image_surface:  # If there is an image surface, blit it onto the screen
+            self.screen.blit(self.image_surface, (0, 0))
+
+            # Create a black rectangle below the image
+            text_rect = pygame.Rect(0, 210, 600, 80)  # Adjust the size as needed
+            pygame.draw.rect(self.screen, (0, 0, 0), text_rect)
+
+            # Render the recognized text with orange 
+            font = pygame.font.SysFont("Comic Sans MS", 48)  # Increase the font size to 36
+            text_surface = font.render(self.recognized_text, True, (255, 165, 0))
+            text_rect = text_surface.get_rect(center=text_rect.center)
+            self.screen.blit(text_surface, text_rect)
+
 
     def createImageFromData(self):
         if not self.write_data:  # If there is no data, do nothing
