@@ -126,7 +126,7 @@ void do_gyro_calibration() {
 
     display_gyro_calib_progress();
 
-    M5.IMU.CalibrateGyro(20);
+    M5.IMU.CalibrateGyro(10);
     M5.IMU.getCalibData(&gyroOffsetX, &gyroOffsetY, &gyroOffsetZ);  // Get gyro offsets after calibration
 
     //Print Calibration data
@@ -294,7 +294,7 @@ void loop() {
         // Recalibrate gyro if needed
         do_gyro_calibration();
         // Recalibrate magnetometer if needed
-        do_mag_calibration();
+        // do_mag_calibration();
 
         // Update display after recalibration
         data_display_setup();  
