@@ -33,6 +33,7 @@ class SerialRead:
         self.data_buffer = bytearray()
         self.button_status_received = False
         self.sensor_data_received = False
+        self.process_count = 0 
         # self.csvData = []
 
         if enableBLE:
@@ -99,7 +100,10 @@ class SerialRead:
         formatted_data[-1] *= 100  # Undo scaling for button status (last item)
 
         self.data = formatted_data
-        print(f"Parsed data: {self.data}")
+        # print(f"Parsed data: {self.data}")
+        # A custom counter to count the notifications received
+        self.process_count += 1
+        print(f"Data processed {self.process_count} times")
 
     def readSerialStart(self):
         if self.thread == None:

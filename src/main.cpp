@@ -21,8 +21,9 @@ BMM150 bmm = BMM150();
 
 bmm150_mag_data value;
 
-bool bigButtonPressed = true;
-bool bigButtonReleased = false;
+uint16_t  bigButtonPressed = 1;
+uint16_t  bigButtonReleased = 0;
+uint8_t buttonData[2];
 
 float accX = 0.0F;
 float accY = 0.0F;
@@ -209,7 +210,7 @@ class MyServerCallbacks: public BLEServerCallbacks {
     void onDisconnect(BLEServer* pServer) {
         bleConnected = false;
         // delay(100);
-        startAdvertising = true;
+        startAdvertising = true;    // Better not to start advertising in the callback because it was behaving weird
     }
 };
 
@@ -236,17 +237,14 @@ void initializeBLE ()
     BLEDevice::startAdvertising();
 }
 
-void buttonCheck() {
+void buttonCheck(uint8_t* data = nullptr) {
     // if BIG Button is pressed, send 1  or 0 if not pressed
     if (digitalRead(M5_BUTTON_HOME) == 0) 
     {
-
-        // Send button data over BLE
-        uint8_t buttonData[2];
-        memcpy(buttonData, &bigButtonPressed, 2);
-        pCharacteristic->setValue(buttonData, 2);
-        pCharacteristic->notify();
-
+        uint16_t buttonStatus = bigButtonPressed;
+        if (data != nullptr) {
+            memcpy(data + 20, &buttonStatus, 2);
+        }
         if (enableSerial) 
         {
             Serial.write((uint8_t *)&bigButtonPressed, 2);
@@ -255,11 +253,10 @@ void buttonCheck() {
         M5.Lcd.fillRect(220, 0, 20, 135, GREEN);
     } else {
 
-        // Send button data over BLE
-        uint8_t buttonData[2];
-        memcpy(buttonData, &bigButtonReleased, 2);
-        pCharacteristic->setValue(buttonData, 2);
-        pCharacteristic->notify();
+        uint16_t buttonStatus = bigButtonReleased;
+        if (data != nullptr) {
+            memcpy(data + 20, &buttonStatus, 2);
+        }
 
         if (enableSerial) 
         {
@@ -392,22 +389,35 @@ void loop() {
         }
 
         // Send data over BLE
-        uint8_t data[20];
-        memcpy(data, &gyroXInt, 2);
-        memcpy(data + 2, &gyroYInt, 2);
-        memcpy(data + 4, &gyroZInt, 2);
-        memcpy(data + 6, &accXInt, 2);
-        memcpy(data + 8, &accYInt, 2);
-        memcpy(data + 10, &accZInt, 2);
-        memcpy(data + 12, &yawInt, 2);
-        memcpy(data + 14, &pitchInt, 2);
-        memcpy(data + 16, &rollInt, 2);
-        memcpy(data + 18, &headingDegreesInt, 2);
-
-        pCharacteristic->setValue(data, 20);
+        uint8_t data[22];
+        // Populate sensor data
+        int16_t sensorData[] = {
+            static_cast<int16_t>(gyroX * 100), 
+            static_cast<int16_t>(gyroY * 100), 
+            static_cast<int16_t>(gyroZ * 100),
+            static_cast<int16_t>(accX * 100), 
+            static_cast<int16_t>(accY * 100), 
+            static_cast<int16_t>(accZ * 100),
+            static_cast<int16_t>(yaw * -100), 
+            static_cast<int16_t>(pitch * 100), 
+            static_cast<int16_t>(roll * -100),
+            static_cast<int16_t>(headingDegrees * 100)
+        };
+        memcpy(data, sensorData, 22);
+        buttonCheck(data);
+        pCharacteristic->setValue(data, 22);
         pCharacteristic->notify();
+        // delay(10);
+        //Display on the screen a manual counter for how many notifications were sent on the bottom right corner
+        static int count = 0;
+        count++;
+        
+        M5.Lcd.setCursor(200, 120);
+        M5.Lcd.printf("%d", count);
 
-        buttonCheck();
+
+
+
     }
     else
     {   
@@ -419,7 +429,7 @@ void loop() {
             display_ble_adv_started();
             startAdvertising = false;
         }
-        buttonCheck();
+        buttonCheck();  // what will I do here ? I still need to check for button press
         delay(50);
     }
     
