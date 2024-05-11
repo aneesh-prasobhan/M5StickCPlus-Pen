@@ -101,8 +101,8 @@ bool check_for_mag_calib() {
     if (bmm.initialize() == BMM150_E_ID_NOT_CONFORM) 
     {
         Serial.println("Chip ID can not read!");
-        while (1)
-        ;
+        // while (1)     // Uncomment this line and the next one to stop the program if the chip ID can't be read
+        // ;
     } 
     // Check if magnetometer calibration data is present in EEPROM
     if (EEPROM.read(MAG_CALIB_X_ADDRESS) != 0xFF ) 
@@ -213,6 +213,28 @@ class MyServerCallbacks: public BLEServerCallbacks {
     }
 };
 
+void initializeBLE ()
+{
+    BLEDevice::init("LOGIXPEN");
+    pServer = BLEDevice::createServer();
+    pServer->setCallbacks(new BLEServerCallbacks());  // Add this line
+    pServer->setCallbacks(new MyServerCallbacks());   // Add this line
+    BLEService *pService = pServer->createService(SERVICE_UUID);
+    pCharacteristic = pService->createCharacteristic(
+                                    CHARACTERISTIC_UUID,
+                                    NIMBLE_PROPERTY::READ |
+                                    NIMBLE_PROPERTY::NOTIFY
+                                );
+    pService->start();
+
+    // Start advertising
+    BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+    pAdvertising->addServiceUUID(SERVICE_UUID);
+    pAdvertising->setScanResponse(true);
+    pAdvertising->setMinPreferred(0x06);  // functions that help with iPhone connections issue
+    pAdvertising->setMinPreferred(0x12);
+    BLEDevice::startAdvertising();
+}
 
 void buttonCheck() {
     // if BIG Button is pressed, send 1  or 0 if not pressed
@@ -281,37 +303,15 @@ void setup()
     if (!check_for_gyro_calib()) {
         do_gyro_calibration();
     }
-
     // Check for magnetometer calibration
     if (!check_for_mag_calib()) {
         do_mag_calibration();
     }
-
-
     // Initialize BLE
-    BLEDevice::init("LOGIXPEN");
-    pServer = BLEDevice::createServer();
-    pServer->setCallbacks(new BLEServerCallbacks());  // Add this line
-    pServer->setCallbacks(new MyServerCallbacks());   // Add this line
-    BLEService *pService = pServer->createService(SERVICE_UUID);
-    pCharacteristic = pService->createCharacteristic(
-                                    CHARACTERISTIC_UUID,
-                                    NIMBLE_PROPERTY::READ |
-                                    NIMBLE_PROPERTY::NOTIFY
-                                );
-    pService->start();
-
-    // Start advertising
-    BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
-    pAdvertising->addServiceUUID(SERVICE_UUID);
-    pAdvertising->setScanResponse(true);
-    pAdvertising->setMinPreferred(0x06);  // functions that help with iPhone connections issue
-    pAdvertising->setMinPreferred(0x12);
-    BLEDevice::startAdvertising();
+    initializeBLE();
 
     // Display BLE advertising status
     display_ble_adv_started();
-
 }
 
 void loop() {
