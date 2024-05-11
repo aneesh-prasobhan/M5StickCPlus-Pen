@@ -12,5 +12,8 @@ void display_dont_move();
 void display_gyro_calib_progress();
 void display_mag_calib_progress();
 void data_display_setup();
+void display_ble_adv_started();
+void displayBLEConnected();
+void displayBLEDisconnected();
 
 #endif

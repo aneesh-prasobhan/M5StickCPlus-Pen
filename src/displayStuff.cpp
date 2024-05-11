@@ -74,3 +74,27 @@ void data_display_setup() {
     M5.Lcd.setCursor(30, 70);
     M5.Lcd.println("  Pitch   Roll    Yaw");
 }
+
+void display_ble_adv_started() {
+    M5.Lcd.fillScreen(BLACK);
+    M5.Lcd.setTextSize(4);
+    M5.Lcd.setTextColor(BLUE);
+    M5.Lcd.setCursor(0, 0);
+    M5.Lcd.print("BLE Adv.  Started");
+}
+
+void displayBLEDisconnected() {
+        M5.Lcd.fillScreen(BLACK);
+        M5.Lcd.setTextSize(4);
+        M5.Lcd.setTextColor(RED);
+        M5.Lcd.setCursor(0, 0);
+        M5.Lcd.print("BLE Disconnected");
+}
+
+void displayBLEConnected() {
+        M5.Lcd.fillScreen(BLACK);
+        M5.Lcd.setTextSize(4);
+        M5.Lcd.setTextColor(GREEN);
+        M5.Lcd.setCursor(0, 0);
+        M5.Lcd.print("BLE Connected");
+}

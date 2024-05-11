@@ -3,6 +3,19 @@
 #include "bmm150_defs.h"
 #include <EEPROM.h>
 #include "displayStuff.h"
+#include <NimBLEDevice.h>
+#include <NimBLEServer.h>
+#include <NimBLECharacteristic.h>
+#include <NimBLEAdvertising.h>
+
+#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+
+NimBLEServer* pServer = NULL;
+NimBLECharacteristic* pCharacteristic = NULL;
+bool bleConnected = false;
+bool startAdvertising = false;
+bool enableSerial = false;
 
 BMM150 bmm = BMM150();
 
@@ -162,14 +175,17 @@ void do_mag_calibration() {
         bmm.calibrate(10000);
         Serial.print("\n\rCalibrate done..");
 
-        // Print calibration data
-        Serial.println("Magnetometer calibration data (Just calibrated): ");
-        Serial.print("X: ");
-        Serial.println(bmm.value_offset.x);
-        Serial.print("Y: ");
-        Serial.println(bmm.value_offset.y);
-        Serial.print("Z: ");
-        Serial.println(bmm.value_offset.z);
+        if (enableSerial) 
+        {
+            // Print calibration data
+            Serial.println("Magnetometer calibration data (Just calibrated): ");
+            Serial.print("X: ");
+            Serial.println(bmm.value_offset.x);
+            Serial.print("Y: ");
+            Serial.println(bmm.value_offset.y);
+            Serial.print("Z: ");
+            Serial.println(bmm.value_offset.z);
+        }
 
         // Save magnetometer calibration data to EEPROM
         magCalibX = bmm.value_offset.x;
@@ -182,6 +198,74 @@ void do_mag_calibration() {
     }
 }
 
+class MyServerCallbacks: public BLEServerCallbacks {
+    void onConnect(BLEServer* pServer) {
+        bleConnected = true;
+        displayBLEConnected();
+        // delay(100);
+        data_display_setup();
+    }
+
+    void onDisconnect(BLEServer* pServer) {
+        bleConnected = false;
+        // delay(100);
+        startAdvertising = true;
+    }
+};
+
+
+void buttonCheck() {
+    // if BIG Button is pressed, send 1  or 0 if not pressed
+    if (digitalRead(M5_BUTTON_HOME) == 0) 
+    {
+
+        // Send button data over BLE
+        uint8_t buttonData[2];
+        memcpy(buttonData, &bigButtonPressed, 2);
+        pCharacteristic->setValue(buttonData, 2);
+        pCharacteristic->notify();
+
+        if (enableSerial) 
+        {
+            Serial.write((uint8_t *)&bigButtonPressed, 2);
+        }
+
+        M5.Lcd.fillRect(220, 0, 20, 135, GREEN);
+    } else {
+
+        // Send button data over BLE
+        uint8_t buttonData[2];
+        memcpy(buttonData, &bigButtonReleased, 2);
+        pCharacteristic->setValue(buttonData, 2);
+        pCharacteristic->notify();
+
+        if (enableSerial) 
+        {
+            Serial.write((uint8_t *)&bigButtonReleased, 2);
+        }
+        M5.Lcd.fillRect(220, 0, 20, 135, RED);
+    }
+
+    if (digitalRead(M5_BUTTON_RST) == LOW) 
+    {
+        while (digitalRead(M5_BUTTON_RST) == LOW)
+        {
+            // Recalibrate gyro if needed
+            do_gyro_calibration();
+            // Recalibrate magnetometer if needed
+            // do_mag_calibration();
+            //If BLE Connected, display data
+            if (bleConnected)
+            {
+                data_display_setup();
+            }
+            else
+            {
+                display_ble_adv_started();
+            }
+        }
+    }
+}
 
 void setup() 
 {   
@@ -203,101 +287,141 @@ void setup()
         do_mag_calibration();
     }
 
-    // Display other setup components
-    data_display_setup();
+
+    // Initialize BLE
+    BLEDevice::init("LOGIXPEN");
+    pServer = BLEDevice::createServer();
+    pServer->setCallbacks(new BLEServerCallbacks());  // Add this line
+    pServer->setCallbacks(new MyServerCallbacks());   // Add this line
+    BLEService *pService = pServer->createService(SERVICE_UUID);
+    pCharacteristic = pService->createCharacteristic(
+                                    CHARACTERISTIC_UUID,
+                                    NIMBLE_PROPERTY::READ |
+                                    NIMBLE_PROPERTY::NOTIFY
+                                );
+    pService->start();
+
+    // Start advertising
+    BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+    pAdvertising->addServiceUUID(SERVICE_UUID);
+    pAdvertising->setScanResponse(true);
+    pAdvertising->setMinPreferred(0x06);  // functions that help with iPhone connections issue
+    pAdvertising->setMinPreferred(0x12);
+    BLEDevice::startAdvertising();
+
+    // Display BLE advertising status
+    display_ble_adv_started();
 
 }
 
-
 void loop() {
-    M5.IMU.getGyroData(&gyroX, &gyroY, &gyroZ);
+
+    if (bleConnected)
+    {  
+        M5.update();  // Update button status       
+        M5.IMU.getGyroData(&gyroX, &gyroY, &gyroZ);
+        
+        gyroX -= gyroOffsetX;  // Subtract gyro offset from gyro reading
+        gyroY -= gyroOffsetY;
+        gyroZ -= gyroOffsetZ;
+        
+        M5.IMU.getAccelData(&accX, &accY, &accZ);
+        M5.IMU.getAhrsData(&pitch, &roll, &yaw);
+
+        // define sampleFreq 110.0f in library for this to work with correct scaling as per current sampling rate with serial print 
+        
+        // Magnetometer Math
     
-    gyroX -= gyroOffsetX;  // Subtract gyro offset from gyro reading
-    gyroY -= gyroOffsetY;
-    gyroZ -= gyroOffsetZ;
-    
-    M5.IMU.getAccelData(&accX, &accY, &accZ);
-    M5.IMU.getAhrsData(&pitch, &roll, &yaw);
+        bmm.read_mag_data();
+        
+        value.x = bmm.raw_mag_data.raw_datax - magCalibX;
+        value.y = bmm.raw_mag_data.raw_datay - magCalibY;
+        value.z = bmm.raw_mag_data.raw_dataz - magCalibZ;
 
-    // define sampleFreq 110.0f in library for this to work with correct scaling as per current sampling rate with serial print 
-    
-    // Magnetometer Math
-   
-    bmm.read_mag_data();
-    
-    value.x = bmm.raw_mag_data.raw_datax - magCalibX;
-    value.y = bmm.raw_mag_data.raw_datay - magCalibY;
-    value.z = bmm.raw_mag_data.raw_dataz - magCalibZ;
+        float xyHeading = atan2(value.x, value.y);
+        // float zxHeading = atan2(value.z, value.x);
+        float heading   = xyHeading;
 
-    float xyHeading = atan2(value.x, value.y);
-    // float zxHeading = atan2(value.z, value.x);
-    float heading   = xyHeading;
+        if (heading < 0) heading += 2 * PI;
+        if (heading > 2 * PI) heading -= 2 * PI;
+        float headingDegrees   = heading * 180 / M_PI;
+        // float xyHeadingDegrees = xyHeading * 180 / M_PI;
+        // float zxHeadingDegrees = zxHeading * 180 / M_PI;
 
-    if (heading < 0) heading += 2 * PI;
-    if (heading > 2 * PI) heading -= 2 * PI;
-    float headingDegrees   = heading * 180 / M_PI;
-    // float xyHeadingDegrees = xyHeading * 180 / M_PI;
-    // float zxHeadingDegrees = zxHeading * 180 / M_PI;
+        M5.Lcd.setCursor(30, 40);
+        M5.Lcd.printf("%6.2f  %6.2f  %6.2f      ", gyroX, gyroY, gyroZ);
+        M5.Lcd.setCursor(170, 40);
+        M5.Lcd.print("o/s");
+        M5.Lcd.setCursor(30, 50);
+        M5.Lcd.printf(" %5.2f   %5.2f   %5.2f   ", accX, accY, accZ);
+        M5.Lcd.setCursor(170, 50);
+        M5.Lcd.print("G");
+        M5.Lcd.setCursor(30, 80);
+        M5.Lcd.printf(" %5.2f   %5.2f   %5.2f   ", pitch, roll, yaw);
 
-    M5.Lcd.setCursor(30, 40);
-    M5.Lcd.printf("%6.2f  %6.2f  %6.2f      ", gyroX, gyroY, gyroZ);
-    M5.Lcd.setCursor(170, 40);
-    M5.Lcd.print("o/s");
-    M5.Lcd.setCursor(30, 50);
-    M5.Lcd.printf(" %5.2f   %5.2f   %5.2f   ", accX, accY, accZ);
-    M5.Lcd.setCursor(170, 50);
-    M5.Lcd.print("G");
-    M5.Lcd.setCursor(30, 80);
-    M5.Lcd.printf(" %5.2f   %5.2f   %5.2f   ", pitch, roll, yaw);
+        M5.Lcd.setCursor(30, 95);
+        M5.Lcd.printf("headingDegrees: %2.1f", headingDegrees);
 
-    M5.Lcd.setCursor(30, 95);
-    M5.Lcd.printf("headingDegrees: %2.1f", headingDegrees);
+        // Assuming the following order: gyroX, gyroY, gyroZ, accX, accY, accZ
+        int16_t gyroXInt = gyroX * 100;  // Convert float to int16_t by multiplying by 100
+        int16_t gyroYInt = gyroY * 100;
+        int16_t gyroZInt = gyroZ * 100;
+        int16_t accXInt = accX * 100;
+        int16_t accYInt = accY * 100;
+        int16_t accZInt = accZ * 100;
 
-    // Assuming the following order: gyroX, gyroY, gyroZ, accX, accY, accZ
-    int16_t gyroXInt = gyroX * 100;  // Convert float to int16_t by multiplying by 100
-    int16_t gyroYInt = gyroY * 100;
-    int16_t gyroZInt = gyroZ * 100;
-    int16_t accXInt = accX * 100;
-    int16_t accYInt = accY * 100;
-    int16_t accZInt = accZ * 100;
+        int16_t yawInt = yaw * -100;
+        int16_t pitchInt = pitch * 100;
+        int16_t rollInt = roll * -100;
 
-    int16_t yawInt = yaw * -100;
-    int16_t pitchInt = pitch * 100;
-    int16_t rollInt = roll * -100;
+        int16_t headingDegreesInt = headingDegrees * 100;
 
-    int16_t headingDegreesInt = headingDegrees * 100;
+        if (enableSerial)
+        {
+            Serial.write((uint8_t *)&gyroXInt, 2);
+            Serial.write((uint8_t *)&gyroYInt, 2);
+            Serial.write((uint8_t *)&gyroZInt, 2);
+            Serial.write((uint8_t *)&accXInt, 2);
+            Serial.write((uint8_t *)&accYInt, 2);
+            Serial.write((uint8_t *)&accZInt, 2);
+            Serial.write((uint8_t *)&yawInt, 2);
+            Serial.write((uint8_t *)&pitchInt, 2);
+            Serial.write((uint8_t *)&rollInt, 2);
+            Serial.write((uint8_t *)&headingDegreesInt, 2);
+            // delay(50);
+        }
 
-    Serial.write((uint8_t *)&gyroXInt, 2);
-    Serial.write((uint8_t *)&gyroYInt, 2);
-    Serial.write((uint8_t *)&gyroZInt, 2);
-    Serial.write((uint8_t *)&accXInt, 2);
-    Serial.write((uint8_t *)&accYInt, 2);
-    Serial.write((uint8_t *)&accZInt, 2);
-    Serial.write((uint8_t *)&yawInt, 2);
-    Serial.write((uint8_t *)&pitchInt, 2);
-    Serial.write((uint8_t *)&rollInt, 2);
-    Serial.write((uint8_t *)&headingDegreesInt, 2);
-    // delay(50);
-    // if BIG Button is pressed, send 1  or 0 if not pressed
-    if (digitalRead(M5_BUTTON_HOME) == 0) {
-        Serial.write((uint8_t *)&bigButtonPressed, 2);
-        M5.Lcd.fillRect(220, 0, 20, 135, GREEN);
-    } else {
-        Serial.write((uint8_t *)&bigButtonReleased, 2);
-        M5.Lcd.fillRect(220, 0, 20, 135, RED);
+        // Send data over BLE
+        uint8_t data[20];
+        memcpy(data, &gyroXInt, 2);
+        memcpy(data + 2, &gyroYInt, 2);
+        memcpy(data + 4, &gyroZInt, 2);
+        memcpy(data + 6, &accXInt, 2);
+        memcpy(data + 8, &accYInt, 2);
+        memcpy(data + 10, &accZInt, 2);
+        memcpy(data + 12, &yawInt, 2);
+        memcpy(data + 14, &pitchInt, 2);
+        memcpy(data + 16, &rollInt, 2);
+        memcpy(data + 18, &headingDegreesInt, 2);
+
+        pCharacteristic->setValue(data, 20);
+        pCharacteristic->notify();
+
+        buttonCheck();
     }
-
-    if (digitalRead(M5_BUTTON_RST) == LOW) 
-    {
-        while (digitalRead(M5_BUTTON_RST) == LOW)
-            ;
-        // Recalibrate gyro if needed
-        do_gyro_calibration();
-        // Recalibrate magnetometer if needed
-        // do_mag_calibration();
-
-        // Update display after recalibration
-        data_display_setup();  
+    else
+    {   
+        if (startAdvertising)
+        {   
+            displayBLEDisconnected();
+            delay(1000);
+            BLEDevice::startAdvertising();
+            display_ble_adv_started();
+            startAdvertising = false;
+        }
+        buttonCheck();
+        delay(50);
     }
+    
 
 }
