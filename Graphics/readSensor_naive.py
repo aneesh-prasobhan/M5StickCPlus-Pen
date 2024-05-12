@@ -6,6 +6,8 @@ import struct
 import numpy as np
 import pandas as pd
 import os
+import threading
+import queue
 
 # BLE module import
 from ble_communication import BLECommunication, notification_handler
@@ -35,6 +37,8 @@ class SerialRead:
         self.sensor_data_received = False
         self.process_ble_count = 0 
         self.process_serial_count = 0
+        self.dataQueue = queue.Queue()
+        self.lock = threading.Lock()
         # self.csvData = []
 
         if enableBLE:
@@ -51,7 +55,7 @@ class SerialRead:
             loop.run_until_complete(self.ble_comm.connect())
             loop.run_until_complete(self.ble_comm.start_notify(self.handle_data))
             loop.run_forever()
-        self.ble_thread = Thread(target=run_ble, daemon=True)
+        self.ble_thread = threading.Thread(target=run_ble, daemon=True)
         self.ble_thread.start()
 
     def init_serial(self):
@@ -64,8 +68,9 @@ class SerialRead:
             exit()
 
     def handle_data(self, sender, data):
-        if len(data) == self.dataNumBytes * self.numParams:
-            self.parse_data(data)
+        with self.lock:
+            if len(data) == self.dataNumBytes * self.numParams:
+                self.dataQueue.put(data)
 
     def parse_data(self, data):
         self.data = np.zeros(self.numParams)
@@ -76,11 +81,8 @@ class SerialRead:
             if i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]:  # Scaling for sensor values
                 value = value / 100.0
             self.data[i] = value
-
-        # Handle the button status
         button_status = data[-2]  # Assume button status is at the second to last byte
         self.data[-1] = button_status  # No scaling for button status
-
         self.process_ble_count += 1
         # print(f"BLE processed {self.process_ble_count} times")
         # print(f"Print inside Parsed data: {self.data}")
@@ -100,6 +102,13 @@ class SerialRead:
                     
     def getSerialData(self):
         if enableBLE:
+            if enableBLE:
+                try:
+                    # Wait for data to be available in the queue
+                    raw_data = self.dataQueue.get(timeout=1)
+                    self.parse_data(raw_data)
+                except queue.Empty:
+                    pass
             return self.data
         else:
             privateData = self.rawData[:]
