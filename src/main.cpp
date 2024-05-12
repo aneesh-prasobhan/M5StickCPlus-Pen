@@ -218,8 +218,8 @@ void initializeBLE ()
 {
     BLEDevice::init("LOGIXPEN");
     pServer = BLEDevice::createServer();
-    pServer->setCallbacks(new BLEServerCallbacks());  // Add this line
-    pServer->setCallbacks(new MyServerCallbacks());   // Add this line
+    pServer->setCallbacks(new BLEServerCallbacks());  
+    pServer->setCallbacks(new MyServerCallbacks());   
     BLEService *pService = pServer->createService(SERVICE_UUID);
     pCharacteristic = pService->createCharacteristic(
                                     CHARACTERISTIC_UUID,
@@ -274,11 +274,11 @@ void buttonCheck(uint8_t* data = nullptr) {
             // Recalibrate magnetometer if needed
             // do_mag_calibration();
             //If BLE Connected, display data
-            if (bleConnected)
+            if (bleConnected || enableSerial)
             {
                 data_display_setup();
             }
-            else
+            else if (!enableSerial)
             {
                 display_ble_adv_started();
             }
@@ -308,12 +308,20 @@ void setup()
     initializeBLE();
 
     // Display BLE advertising status
-    display_ble_adv_started();
+    if (!enableSerial)
+    {
+        display_ble_adv_started();
+    }
+    else
+    {
+        data_display_setup();
+    }
+    
 }
 
 void loop() {
 
-    if (bleConnected)
+    if (bleConnected || enableSerial)
     {  
         M5.update();  // Update button status       
         M5.IMU.getGyroData(&gyroX, &gyroY, &gyroZ);
@@ -386,28 +394,32 @@ void loop() {
             Serial.write((uint8_t *)&rollInt, 2);
             Serial.write((uint8_t *)&headingDegreesInt, 2);
             // delay(50);
+            buttonCheck();
+        }
+        else
+        {
+            // Send data over BLE
+            uint8_t data[22];
+            // Populate sensor data
+            int16_t sensorData[] = {
+                static_cast<int16_t>(gyroX * 100), 
+                static_cast<int16_t>(gyroY * 100), 
+                static_cast<int16_t>(gyroZ * 100),
+                static_cast<int16_t>(accX * 100), 
+                static_cast<int16_t>(accY * 100), 
+                static_cast<int16_t>(accZ * 100),
+                static_cast<int16_t>(yaw * -100), 
+                static_cast<int16_t>(pitch * 100), 
+                static_cast<int16_t>(roll * -100),
+                static_cast<int16_t>(headingDegrees * 100)
+            };
+            memcpy(data, sensorData, 22);
+            buttonCheck(data);
+            pCharacteristic->setValue(data, 22);
+            pCharacteristic->notify();
+            // delay(10);
         }
 
-        // Send data over BLE
-        uint8_t data[22];
-        // Populate sensor data
-        int16_t sensorData[] = {
-            static_cast<int16_t>(gyroX * 100), 
-            static_cast<int16_t>(gyroY * 100), 
-            static_cast<int16_t>(gyroZ * 100),
-            static_cast<int16_t>(accX * 100), 
-            static_cast<int16_t>(accY * 100), 
-            static_cast<int16_t>(accZ * 100),
-            static_cast<int16_t>(yaw * -100), 
-            static_cast<int16_t>(pitch * 100), 
-            static_cast<int16_t>(roll * -100),
-            static_cast<int16_t>(headingDegrees * 100)
-        };
-        memcpy(data, sensorData, 22);
-        buttonCheck(data);
-        pCharacteristic->setValue(data, 22);
-        pCharacteristic->notify();
-        // delay(10);
         //Display on the screen a manual counter for how many notifications were sent on the bottom right corner
         static int count = 0;
         count++;
@@ -415,13 +427,10 @@ void loop() {
         M5.Lcd.setCursor(200, 120);
         M5.Lcd.printf("%d", count);
 
-
-
-
     }
     else
     {   
-        if (startAdvertising)
+        if (startAdvertising && !enableSerial)
         {   
             displayBLEDisconnected();
             delay(1000);

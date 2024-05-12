@@ -33,7 +33,8 @@ class SerialRead:
         self.data_buffer = bytearray()
         self.button_status_received = False
         self.sensor_data_received = False
-        self.process_count = 0 
+        self.process_ble_count = 0 
+        self.process_serial_count = 0
         # self.csvData = []
 
         if enableBLE:
@@ -102,8 +103,8 @@ class SerialRead:
         self.data = formatted_data
         # print(f"Parsed data: {self.data}")
         # A custom counter to count the notifications received
-        self.process_count += 1
-        print(f"Data processed {self.process_count} times")
+        self.process_ble_count += 1
+        print(f"BLE processed {self.process_ble_count} times")
 
     def readSerialStart(self):
         if self.thread == None:
@@ -137,6 +138,9 @@ class SerialRead:
                     value = value / 100.0 
                             
                 self.data[i] = value
+                   # A custom counter to count the notifications received
+            self.process_serial_count += 1
+            print(f"Serial processed {self.process_serial_count} times")
             return self.data
 
 
@@ -147,7 +151,7 @@ class SerialRead:
             while self.isRun:
                 self.serialConnection.readinto(self.rawData)
                 self.isReceiving = True
-                self.parse_data(self.rawData)
+                # self.parse_data(self.rawData)
 
 
     def close(self):        

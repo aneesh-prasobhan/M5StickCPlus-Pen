@@ -49,6 +49,7 @@ class ProjectionViewer:
                     sensorInstance.close()
             self.clock.tick(loopRate)
             data = sensorInstance.getSerialData()
+            print(data)
             attitude = [data[6], data[7], data[8]]
             
             isWriting = data[10]
