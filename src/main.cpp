@@ -415,6 +415,18 @@ void loop() {
             };
             memcpy(data, sensorData, 22);
             buttonCheck(data);
+            // // also print data which was sent via BLE serially and have a line return
+            // Serial.println("Data sent via BLE");
+            // Serial.println(sensorData[0]);
+            // Serial.println(sensorData[1]);
+            // Serial.println(sensorData[2]);
+            // Serial.println(sensorData[3]);
+            // Serial.println(sensorData[4]);
+            // Serial.println(sensorData[5]);
+            // Serial.println(sensorData[6]);
+            // Serial.println(sensorData[7]);
+            // Serial.println(sensorData[8]);
+            // Serial.println(sensorData[9]);
             pCharacteristic->setValue(data, 22);
             pCharacteristic->notify();
             // delay(10);

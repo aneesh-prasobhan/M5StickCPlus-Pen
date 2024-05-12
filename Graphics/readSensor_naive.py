@@ -64,47 +64,28 @@ class SerialRead:
             exit()
 
     def handle_data(self, sender, data):
-        # print(f"Received BLE data: {data}")
-        # Append new data to the buffer
-        self.data_buffer += data  
-
-        # Check if buffer has enough data for the sensor readings (data[0] to data[9])
-        if not self.sensor_data_received and len(self.data_buffer) >= self.dataNumBytes * 10:
-            self.sensor_data_received = True
-
-        # Check if the button status has been received
-        if not self.button_status_received and len(self.data_buffer) >= self.dataNumBytes * 11:
-            self.button_status_received = True
-
-        # If both sensor data and button status have been received, parse the complete data
-        if self.sensor_data_received and self.button_status_received:
-            self.parse_data(self.data_buffer[:self.dataNumBytes * 11])
-            # Clear the buffer and reset flags
-            self.data_buffer = bytearray()
-            self.sensor_data_received = False
-            self.button_status_received = False
+        if len(data) == self.dataNumBytes * self.numParams:
+            self.parse_data(data)
 
     def parse_data(self, data):
-        num_values = (len(data) - 2) // self.dataNumBytes  # Adjust for 10 sensor readings, last 2 bytes for button
-        formatted_data = []
-        for i in range(num_values):
-            value, = struct.unpack('<h', data[i*self.dataNumBytes:(i+1)*self.dataNumBytes])
-            formatted_data.append(value)
-        
-        # Correctly handle the button status
-        # Assuming button status is sent as first byte of the last two bytes, ignoring the second byte
-        button_status, = struct.unpack('<h', data[-2:])  # interprets the full 2 bytes
-        button_status = data[-2]  # directly take the first byte only, assuming little endian
+        self.data = np.zeros(self.numParams)
+        for i in range(self.numParams - 1):
+            start = i * self.dataNumBytes
+            end = start + self.dataNumBytes
+            value, = struct.unpack('<h', data[start:end])
+            if i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]:  # Scaling for sensor values
+                value = value / 100.0
+            self.data[i] = value
 
-        formatted_data.append(button_status)  # Append the button status correctly
-        formatted_data = np.array(formatted_data) / 100.0  # Scale the data if necessary
-        formatted_data[-1] *= 100  # Undo scaling for button status (last item)
+        # Handle the button status
+        button_status = data[-2]  # Assume button status is at the second to last byte
+        self.data[-1] = button_status  # No scaling for button status
 
-        self.data = formatted_data
-        # print(f"Parsed data: {self.data}")
-        # A custom counter to count the notifications received
         self.process_ble_count += 1
-        print(f"BLE processed {self.process_ble_count} times")
+        # print(f"BLE processed {self.process_ble_count} times")
+        # print(f"Print inside Parsed data: {self.data}")
+
+
 
     def readSerialStart(self):
         if self.thread == None:
@@ -118,10 +99,10 @@ class SerialRead:
                 return True
                     
     def getSerialData(self):
-        privateData = self.rawData[:]
         if enableBLE:
             return self.data
         else:
+            privateData = self.rawData[:]
             for i in range(self.numParams):
                 data = privateData[(i*self.dataNumBytes):(self.dataNumBytes + i*self.dataNumBytes)]
                 value,  = struct.unpack(self.dataType, data)
