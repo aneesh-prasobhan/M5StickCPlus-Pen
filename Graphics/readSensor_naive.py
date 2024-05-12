@@ -39,6 +39,7 @@ class SerialRead:
         self.process_serial_count = 0
         self.dataQueue = queue.Queue()
         self.lock = threading.Lock()
+        self.stop_event = threading.Event()
         # self.csvData = []
 
         if enableBLE:
@@ -52,9 +53,18 @@ class SerialRead:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             self.ble_comm = BLECommunication(self.ble_address, '4fafc201-1fb5-459e-8fcc-c5c9c331914b', 'beb5483e-36e1-4688-b7f5-ea07361b26a8')
-            loop.run_until_complete(self.ble_comm.connect())
-            loop.run_until_complete(self.ble_comm.start_notify(self.handle_data))
-            loop.run_forever()
+            try:
+                connected = loop.run_until_complete(self.ble_comm.connect())
+                if connected:
+                    loop.run_until_complete(self.ble_comm.start_notify(self.handle_data))
+                while not self.stop_event.is_set():
+                    loop.run_until_complete(asyncio.sleep(0.1))
+            except ConnectionError as e:
+                print(f"Error connecting to BLE device: {e}")
+            finally:
+                if self.ble_comm.client.is_connected:
+                    loop.run_until_complete(self.ble_comm.disconnect())
+                loop.close()
         self.ble_thread = threading.Thread(target=run_ble, daemon=True)
         self.ble_thread.start()
 
@@ -143,10 +153,22 @@ class SerialRead:
                 self.isReceiving = True
                 # self.parse_data(self.rawData)
 
-
+    async def close_ble(self):
+        if self.ble_comm and self.ble_comm.is_connected():
+            await self.ble_comm.stop_notify()
+            await self.ble_comm.disconnect()
+        self.stop_event.set()  # Signal the BLE thread to stop
+        if self.ble_thread.is_alive():
+            self.ble_thread.join()  # Wait for the BLE thread to finish
+        print('BLE Disconnected...')
+    
+    
     def close(self):        
         if enableBLE:
-            asyncio.get_event_loop().run_until_complete(self.ble_comm.disconnect())
+            self.isRun = False  
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(self.close_ble())
         
         else:
             self.serialConnection.dtr = True

@@ -6,12 +6,21 @@ class BLECommunication:
         self.address = address
         self.service_uuid = service_uuid
         self.characteristic_uuid = characteristic_uuid
-        self.client = None
+        self.client = BleakClient(address)
 
     async def connect(self):
-        self.client = BleakClient(self.address)
-        await self.client.connect()
-        return self.client.is_connected
+        retries = 10
+        for attempt in range(retries):
+            try:
+                await self.client.connect()
+                return self.client.is_connected
+            except Exception as e:
+                print(f"Connection attempt {attempt + 1} failed: {e}")
+                if attempt < retries - 1:
+                    print("Retrying...")
+                    await asyncio.sleep(1)  # wait a bit before retrying
+                else:
+                    raise ConnectionError("Failed to connect after several attempts")
 
     async def start_notify(self, handler):
         await self.client.start_notify(self.characteristic_uuid, handler)
@@ -20,7 +29,9 @@ class BLECommunication:
         await self.client.stop_notify(self.characteristic_uuid)
 
     async def disconnect(self):
-        await self.client.disconnect()
+        if self.client and self.client.is_connected:
+            await self.client.disconnect()
+            print("Disconnected from BLE device.")
 
     def is_connected(self):
         return self.client.is_connected if self.client else False

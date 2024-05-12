@@ -42,40 +42,46 @@ class ProjectionViewer:
         loopRate = 60
         reference_yaw = None
         
-        while running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
+        try:
+            while running:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        running = False
+                        break
+                if not running:
                     sensorInstance.close()
-            self.clock.tick(loopRate)
-            data = sensorInstance.getSerialData()
-            # print(f"Print in Board Display run data: {data}")
-            attitude = [data[6], data[7], data[8]]
-            
-            isWriting = data[10]
+                self.clock.tick(loopRate)
+                data = sensorInstance.getSerialData()
+                # print(f"Print in Board Display run data: {data}")
+                attitude = [data[6], data[7], data[8]]
+                
+                isWriting = data[10]
 
 
-            if isWriting and reference_yaw is None:  # Add these lines to store the reference yaw when writing starts
-                reference_yaw = attitude[0]
+                if isWriting and reference_yaw is None:  # Add these lines to store the reference yaw when writing starts
+                    reference_yaw = attitude[0]
 
-            if not isWriting:  # Add this line to reset the reference yaw when writing stops
-                reference_yaw = None
+                if not isWriting:  # Add this line to reset the reference yaw when writing stops
+                    reference_yaw = None
 
-            # If a reference yaw is stored, adjust the current yaw relative to the reference yaw
-            if reference_yaw is not None:
-                attitude[0] = (attitude[0] - reference_yaw - yaw_offset) % 360  # The yaw is adjusted so that it's as if we started writing with yaw -90
+                # If a reference yaw is stored, adjust the current yaw relative to the reference yaw
+                if reference_yaw is not None:
+                    attitude[0] = (attitude[0] - reference_yaw - yaw_offset) % 360  # The yaw is adjusted so that it's as if we started writing with yaw -90
 
 
 
-            yaw_rad = math.radians(attitude[0])
-            pitch_rad = math.radians(attitude[1])
-            roll_rad = math.radians(attitude[2])
-            # Update the quaternion based on the attitude data (yaw, pitch, roll)
-            self.wireframe.quaternion.q = quat.euler_to_quaternion(yaw_rad, pitch_rad, roll_rad)
-            self.display(attitude)
-            self.displayPlane()  # Display the fixed orange plane
-            self.displayLine(isWriting)  # Display the line
-            pygame.display.flip()
+                yaw_rad = math.radians(attitude[0])
+                pitch_rad = math.radians(attitude[1])
+                roll_rad = math.radians(attitude[2])
+                # Update the quaternion based on the attitude data (yaw, pitch, roll)
+                self.wireframe.quaternion.q = quat.euler_to_quaternion(yaw_rad, pitch_rad, roll_rad)
+                self.display(attitude)
+                self.displayPlane()  # Display the fixed orange plane
+                self.displayLine(isWriting)  # Display the line
+                pygame.display.flip()
+        finally:
+            pygame.quit()
+            print("Pygame has been closed.")
 
     def display(self, attitude):
         """ Draw the wireframes on the screen. """
