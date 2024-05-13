@@ -30,8 +30,11 @@ class BLECommunication:
 
     async def disconnect(self):
         if self.client and self.client.is_connected:
-            await self.client.disconnect()
-            print("Disconnected from BLE device.")
+            try:
+                await asyncio.wait_for(self.client.disconnect(), timeout=3)
+                print("Disconnection timed out.")
+            except asyncio.TimeoutError:
+                print("Disconnected from BLE device.")
 
     def is_connected(self):
         return self.client.is_connected if self.client else False

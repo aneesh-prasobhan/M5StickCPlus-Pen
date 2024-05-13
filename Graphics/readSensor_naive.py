@@ -162,14 +162,12 @@ class SerialRead:
             self.ble_thread.join()  # Wait for the BLE thread to finish
         print('BLE Disconnected...')
     
-    
     def close(self):        
         if enableBLE:
             self.isRun = False  
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             loop.run_until_complete(self.close_ble())
-        
         else:
             self.serialConnection.dtr = True
             self.serialConnection.rts = False
