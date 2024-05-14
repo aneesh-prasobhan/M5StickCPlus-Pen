@@ -16,6 +16,9 @@ NimBLECharacteristic* pCharacteristic = NULL;
 bool bleConnected = false;
 bool startAdvertising = false;
 bool enableSerial = false;
+// for controlling gyro calib duration eg. 10000 for 10 seconds
+int gyroCalibDurationSeconds = 10;
+uint32_t magCalibDurationMillis = 10000;
 
 BMM150 bmm = BMM150();
 
@@ -140,7 +143,7 @@ void do_gyro_calibration() {
 
     display_gyro_calib_progress();
 
-    M5.IMU.CalibrateGyro(10);
+    M5.IMU.CalibrateGyro(gyroCalibDurationSeconds);
     M5.IMU.getCalibData(&gyroOffsetX, &gyroOffsetY, &gyroOffsetZ);  // Get gyro offsets after calibration
 
     //Print Calibration data
@@ -173,7 +176,7 @@ void do_mag_calibration() {
 
         display_mag_calib_progress();
         
-        bmm.calibrate(10000);
+        bmm.calibrate(magCalibDurationMillis);
         Serial.print("\n\rCalibrate done..");
 
         if (enableSerial) 
@@ -217,6 +220,11 @@ class MyServerCallbacks: public BLEServerCallbacks {
 void initializeBLE ()
 {
     BLEDevice::init("LOGIXPEN");
+    //set max power 
+    // NimBLEDevice::setPower(ESP_PWR_LVL_P9); // this didn't really work, but the following 3 lines actually increased tx power
+    esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, ESP_PWR_LVL_P9); 
+    esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_ADV, ESP_PWR_LVL_P9);
+    esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_SCAN ,ESP_PWR_LVL_P9);
     pServer = BLEDevice::createServer();
     pServer->setCallbacks(new BLEServerCallbacks());  
     pServer->setCallbacks(new MyServerCallbacks());   
@@ -232,7 +240,7 @@ void initializeBLE ()
     BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
     pAdvertising->addServiceUUID(SERVICE_UUID);
     pAdvertising->setScanResponse(true);
-    pAdvertising->setMinPreferred(0x06);  // functions that help with iPhone connections issue
+    pAdvertising->setMinPreferred(0x06);  
     pAdvertising->setMinPreferred(0x12);
     BLEDevice::startAdvertising();
 }
@@ -450,7 +458,7 @@ void loop() {
             display_ble_adv_started();
             startAdvertising = false;
         }
-        buttonCheck();  // what will I do here ? I still need to check for button press
+        buttonCheck(); 
         delay(50);
     }
     

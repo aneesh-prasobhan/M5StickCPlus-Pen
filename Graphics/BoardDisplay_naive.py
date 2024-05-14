@@ -7,7 +7,8 @@ import Quaternion_naive as quat
 import math
 from vision_test import process_image
 from user_config import *
-
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 if yaw_hand == 0:
     yaw_offset = yaw_offset_right_hand
