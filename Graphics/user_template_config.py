@@ -3,6 +3,7 @@
 # Serial Port Configuration
 portName = ''  # e.g., 'COM3' on Windows or '/dev/ttyUSB0' on Linux
 baudRate = 115200
+enableBLE = True  # Set True to enable BLE communication
 
 # User Preferences
 yaw_hand = 0  # Set 0 for right hand, 1 for left hand

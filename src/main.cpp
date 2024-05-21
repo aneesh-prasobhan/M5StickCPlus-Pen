@@ -15,9 +15,9 @@ NimBLEServer* pServer = NULL;
 NimBLECharacteristic* pCharacteristic = NULL;
 bool bleConnected = false;
 bool startAdvertising = false;
-bool enableSerial = false;
+bool enableSerial = true;      // enable Serial means BLE is disabled and data is sent over Serial
 // for controlling gyro calib duration eg. 10000 for 10 seconds
-int gyroCalibDurationSeconds = 10;
+int gyroCalibDurationSeconds = 20;
 uint32_t magCalibDurationMillis = 10000;
 
 BMM150 bmm = BMM150();
@@ -280,7 +280,7 @@ void buttonCheck(uint8_t* data = nullptr) {
             // Recalibrate gyro if needed
             do_gyro_calibration();
             // Recalibrate magnetometer if needed
-            // do_mag_calibration();
+            // do_mag_calibration();        // Enable this line to recalibrate magnetometer on button press
             //If BLE Connected, display data
             if (bleConnected || enableSerial)
             {

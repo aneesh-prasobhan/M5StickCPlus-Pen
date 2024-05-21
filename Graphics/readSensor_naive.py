@@ -8,12 +8,11 @@ import pandas as pd
 import os
 import threading
 import queue
+from user_config import enableBLE
 
 # BLE module import
 from ble_communication import BLECommunication, notification_handler
 import asyncio
-
-enableBLE = 1  # Set to 1 for BLE, 0 for serial
 
 class SerialRead:
     def __init__(self, serialPort='COM4', serialBaud=115200, dataNumBytes=2, numParams=6, ble_address="E8:9F:6D:09:2E:8A"):
@@ -140,7 +139,7 @@ class SerialRead:
                 self.data[i] = value
                    # A custom counter to count the notifications received
             self.process_serial_count += 1
-            print(f"Serial processed {self.process_serial_count} times")
+            # print(f"Serial processed {self.process_serial_count} times")
             return self.data
 
 
