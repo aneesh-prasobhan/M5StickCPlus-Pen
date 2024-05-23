@@ -20,6 +20,9 @@ bool enableSerial = true;      // enable Serial means BLE is disabled and data i
 int gyroCalibDurationSeconds = 20;
 uint32_t magCalibDurationMillis = 10000;
 
+bool enableGyroCalibrationOffset = true;
+bool enableMagCalibrationOffset = true;
+
 BMM150 bmm = BMM150();
 
 bmm150_mag_data value;
@@ -334,10 +337,13 @@ void loop() {
         M5.update();  // Update button status       
         M5.IMU.getGyroData(&gyroX, &gyroY, &gyroZ);
         
+        if (enableGyroCalibrationOffset)
+        {
         gyroX -= gyroOffsetX;  // Subtract gyro offset from gyro reading
         gyroY -= gyroOffsetY;
         gyroZ -= gyroOffsetZ;
-        
+        }
+
         M5.IMU.getAccelData(&accX, &accY, &accZ);
         M5.IMU.getAhrsData(&pitch, &roll, &yaw);
 
@@ -347,9 +353,16 @@ void loop() {
     
         bmm.read_mag_data();
         
-        value.x = bmm.raw_mag_data.raw_datax - magCalibX;
-        value.y = bmm.raw_mag_data.raw_datay - magCalibY;
-        value.z = bmm.raw_mag_data.raw_dataz - magCalibZ;
+        value.x = bmm.raw_mag_data.raw_datax;
+        value.y = bmm.raw_mag_data.raw_datay;
+        value.z = bmm.raw_mag_data.raw_dataz;
+
+        if (enableMagCalibrationOffset)
+        {
+            value.x -= magCalibX;
+            value.y -= magCalibY;
+            value.z -= magCalibZ;
+        }
 
         float xyHeading = atan2(value.x, value.y);
         // float zxHeading = atan2(value.z, value.x);
