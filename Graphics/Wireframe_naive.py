@@ -1,6 +1,7 @@
 # Wireframe_naive.py
 import numpy as np
 import Quaternion_naive as quat
+import Kalman_EKF as km
 
 # Node stores each point of the block
 class Node:
@@ -28,6 +29,7 @@ class Wireframe:
         self.edges = []
         self.faces = []
         self.quaternion = quat.Quaternion()
+        self.sys = km.System()
 
     def addNodes(self, nodeList, colorList):
         for node, color in zip(nodeList, colorList):
@@ -37,19 +39,27 @@ class Wireframe:
         for indexes, color in zip(faceList, colorList):
             self.faces.append(Face(indexes, color))
 
-    def quatRotate(self, w, dt):
-        self.quaternion.rotate(w, dt)
-
+    def quatRotate(self, w, a, m, dt):
+        self.sys.predict(w, dt)
+        self.sys.update(a, m)
+        self.quaternion.q = self.sys.xHat[0:4]
+    
     def rotatePoint(self, point):
-        rotationMat = quat.getRotMat(self.quaternion.q)
-        return np.matmul(rotationMat, point)
+        rotationMat = km.getRotMat(self.sys.xHat[0:4])
+        print(f"Rotation Matrix:\n{rotationMat}")
+        rotatedPoint = np.matmul(rotationMat, point)
+        print(f"Rotated Point: {rotatedPoint}")
+        return rotatedPoint
 
     def convertToComputerFrame(self, point):
         computerFrameChangeMatrix = np.array([[-1, 0, 0], [0, 0, -1], [0, -1, 0]])
-        return np.matmul(computerFrameChangeMatrix, point)
+        print(f"Computer Frame Change Matrix:\n{computerFrameChangeMatrix}")
+        convertedPoint = np.matmul(computerFrameChangeMatrix, point)
+        print(f"Converted Point: {convertedPoint}")
+        return convertedPoint
 
     def getAttitude(self):
-        return quat.getEulerAngles(self.quaternion.q)
+        return km.getEulerAngles(self.sys.xHat[0:4])
 
     def outputNodes(self):
         print("\n --- Nodes --- ")

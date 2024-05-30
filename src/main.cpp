@@ -20,8 +20,8 @@ bool enableSerial = true;      // enable Serial means BLE is disabled and data i
 int gyroCalibDurationSeconds = 20;
 uint32_t magCalibDurationMillis = 10000;
 
-bool enableGyroCalibrationOffset = true;
-bool enableMagCalibrationOffset = true;
+bool enableGyroCalibrationOffset = false;
+bool enableMagCalibrationOffset = false;
 
 BMM150 bmm = BMM150();
 
@@ -414,13 +414,16 @@ void loop() {
             Serial.write((uint8_t *)&pitchInt, 2);
             Serial.write((uint8_t *)&rollInt, 2);
             Serial.write((uint8_t *)&headingDegreesInt, 2);
+            Serial.write((uint8_t *)&value.x, 2);
+            Serial.write((uint8_t *)&value.y, 2);
+            Serial.write((uint8_t *)&value.z, 2);
             // delay(50);
             buttonCheck();
         }
         else
         {
             // Send data over BLE
-            uint8_t data[22];
+            uint8_t data[28];
             // Populate sensor data
             int16_t sensorData[] = {
                 static_cast<int16_t>(gyroX * 100), 
@@ -432,9 +435,12 @@ void loop() {
                 static_cast<int16_t>(yaw * -100), 
                 static_cast<int16_t>(pitch * 100), 
                 static_cast<int16_t>(roll * -100),
-                static_cast<int16_t>(headingDegrees * 100)
+                static_cast<int16_t>(headingDegrees * 100),
+                static_cast<int16_t>(value.x), 
+                static_cast<int16_t>(value.y), 
+                static_cast<int16_t>(value.z)
             };
-            memcpy(data, sensorData, 22);
+            memcpy(data, sensorData, sizeof(sensorData));
             buttonCheck(data);
             // // also print data which was sent via BLE serially and have a line return
             // Serial.println("Data sent via BLE");
@@ -448,7 +454,7 @@ void loop() {
             // Serial.println(sensorData[7]);
             // Serial.println(sensorData[8]);
             // Serial.println(sensorData[9]);
-            pCharacteristic->setValue(data, 22);
+            pCharacteristic->setValue(data, sizeof(sensorData));
             pCharacteristic->notify();
             // delay(10);
         }

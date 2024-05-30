@@ -53,10 +53,21 @@ class ProjectionViewer:
                     sensorInstance.close()
                 self.clock.tick(loopRate)
                 data = sensorInstance.getSerialData()
+                gyro_data = [data[0], data[1], data[2]]
+                accel_data = [data[3], data[4], data[5]]
+                mag_data = [data[10], data[11], data[12]]
                 # print(f"Print in Board Display run data: {data}")
-                attitude = [data[6], data[7], data[8]]
+                # attitude = [data[6], data[7], data[8]]
                 
-                isWriting = data[10]
+                
+                
+                #Get the attitude from EKF
+                attitude = self.wireframe.getAttitude()
+                yaw_deg = attitude[0]
+                pitch_deg = attitude[1]
+                roll_deg = attitude[2]
+                
+                isWriting = data[13]
 
 
                 if isWriting and reference_yaw is None:  # Add these lines to store the reference yaw when writing starts
@@ -65,17 +76,22 @@ class ProjectionViewer:
                 if not isWriting:  # Add this line to reset the reference yaw when writing stops
                     reference_yaw = None
 
-                # If a reference yaw is stored, adjust the current yaw relative to the reference yaw
                 if reference_yaw is not None:
-                    attitude[0] = (attitude[0] - reference_yaw - yaw_offset) % 360  # The yaw is adjusted so that it's as if we started writing with yaw -90
+                    attitude = list(attitude)  # Convert attitude tuple to a list
+                    attitude[0] = (attitude[0] - reference_yaw - yaw_offset) % 360
+                    attitude = tuple(attitude)  # Convert attitude back to a tuple
 
 
 
-                yaw_rad = math.radians(attitude[0])
-                pitch_rad = math.radians(attitude[1])
-                roll_rad = math.radians(attitude[2])
+                # yaw_rad = math.radians(attitude[0])
+                # pitch_rad = math.radians(attitude[1])
+                # roll_rad = math.radians(attitude[2])
+                
+                
                 # Update the quaternion based on the attitude data (yaw, pitch, roll)
-                self.wireframe.quaternion.q = quat.euler_to_quaternion(yaw_rad, pitch_rad, roll_rad)
+                # self.wireframe.quaternion.q = quat.euler_to_quaternion(yaw_rad, pitch_rad, roll_rad)
+                self.wireframe.quatRotate(gyro_data, accel_data, mag_data, 1/loopRate)
+                
                 self.display(attitude)
                 self.displayPlane()  # Display the fixed orange plane
                 self.displayLine(isWriting)  # Display the line
@@ -157,23 +173,35 @@ class ProjectionViewer:
         pygame.draw.polygon(self.screen, face.color, pointList)
 
     def displayLine(self, isWriting):
-        self.line.setQuaternion(self.wireframe.quaternion.q)
+        quaternion = self.wireframe.sys.xHat[0:4]
+        print(f"Quaternion: {quaternion}")
+        print(f"Line nodes: {self.line.nodes}")
+
+        self.line.setQuaternion(quaternion)
         pvNodes = []
         pvDepth = []
-        comFrameCoords = []  # Store 3D coordinates of line points
+        comFrameCoords = []
 
         for i, node in enumerate(self.line.nodes):
             point = [node.x, node.y, node.z]
+            print(f"Point {i}: {point}")
             newCoord = self.line.rotatePoint(point)
+            print(f"New coord {i}: {newCoord}")
             comFrameCoord = self.line.convertToComputerFrame(newCoord)
+            print(f"Computer frame coord {i}: {comFrameCoord}")
             pvNodes.append(self.projectOthorgraphic(comFrameCoord[0], comFrameCoord[1], comFrameCoord[2],
                                                     self.screen.get_width(), self.screen.get_height(),
                                                     70, pvDepth))
-
-            # Store 3D coordinates for intersection calculations
             comFrameCoords.append(comFrameCoord)
 
+
+        print(f"Projected Nodes: {pvNodes}")
+        print(f"Projected Depths: {pvDepth}")
+
         for edge in self.line.edges:
+            print(f"Drawing Line:")
+            print(f"  Start: {pvNodes[edge.start]}")
+            print(f"  End: {pvNodes[edge.end]}")
             pygame.draw.line(self.screen, (255, 255, 255), pvNodes[edge.start], pvNodes[edge.end], 2)
 
 
@@ -263,17 +291,14 @@ class ProjectionViewer:
 
     # Normal Projection
     def projectOthorgraphic(self, x, y, z, win_width, win_height, scaling_constant, pvDepth):
-        # In Pygame, the y axis is downward pointing.
-        # In order to make y point upwards, a rotation around x axis by 180 degrees is needed.
-        # This will result in y' = -y and z' = -z
         xPrime = x
         yPrime = -y
         zPrime = z + 5
+        print(f"Orthographic Projection:")
+        print(f"  X': {xPrime}, Y': {yPrime}, Z': {zPrime}")
         xProjected = xPrime * scaling_constant + win_width / 2
         yProjected = yPrime * scaling_constant + win_height / 2
-        # Note that there is no negative sign here because our rotation to computer frame
-        # assumes that the computer frame is x-right, y-up, z-out
-        # so this z-coordinate below is already in the outward direction
+        print(f"  Projected X: {xProjected}, Projected Y: {yProjected}")
         pvDepth.append(zPrime)
         return (round(xProjected), round(yProjected))
 
@@ -316,22 +341,24 @@ def initializePlane():
 def initializeLine(cuboid):
     line = wf.Wireframe()
 
-    # Calculate the midpoints of the yellow and cyan faces.
-    yellow_face = cuboid.faces[5]  # Change these indices to match your yellow and cyan faces.
+    yellow_face = cuboid.faces[5]
     cyan_face = cuboid.faces[4]
     yellow_mid = cuboid.calculateMidpoint(yellow_face)
     cyan_mid = cuboid.calculateMidpoint(cyan_face)
 
-    # Calculate the direction of the line.
-    direction = (cyan_mid[0] - yellow_mid[0], cyan_mid[1] - yellow_mid[1], cyan_mid[2] - yellow_mid[2])
+    print(f"Yellow midpoint: {yellow_mid}")
+    print(f"Cyan midpoint: {cyan_mid}")
 
-    # Create two points far enough along the line in both directions from the midpoint.
-    factor = 3  # Change this factor to adjust the length of the line.
+    direction = (cyan_mid[0] - yellow_mid[0], cyan_mid[1] - yellow_mid[1], cyan_mid[2] - yellow_mid[2])
+    factor = 3
     line_start = (yellow_mid[0] - factor * direction[0], yellow_mid[1] - factor * direction[1], yellow_mid[2] - factor * direction[2])
     line_end = (cyan_mid[0] + factor * direction[0], cyan_mid[1] + factor * direction[1], cyan_mid[2] + factor * direction[2])
 
+    print(f"Line start: {line_start}")
+    print(f"Line end: {line_end}")
+
     line_nodes = [line_start, line_end]
-    line_colors = [(255, 255, 255)] * len(line_nodes)  # Change this to set the color of the line.
+    line_colors = [(255, 255, 255)] * len(line_nodes)
     line.addNodes(line_nodes, line_colors)
 
     line_edges = [(0, 1)]
@@ -345,7 +372,7 @@ if __name__ == '__main__':
     # portName = 'COM6'
     # baudRate = 115200
     dataNumBytes = 2  # number of bytes of 1 data point
-    numParams = 11  # number of plots in 1 graph
+    numParams = 14  # number of plots in 1 graph
     s = rs.SerialRead(serialPort=portName, serialBaud=baudRate, dataNumBytes=dataNumBytes, numParams=numParams)  # initializes all required variables
     s.readSerialStart()  # starts background thread
 

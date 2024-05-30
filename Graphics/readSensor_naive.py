@@ -89,6 +89,10 @@ class SerialRead:
             value, = struct.unpack('<h', data[start:end])
             if i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]:  # Scaling for sensor values
                 value = value / 100.0
+            elif i in [10, 11, 12]:
+                # MAg values are already in raw format
+                pass
+            
             self.data[i] = value
         button_status = data[-2]  # Assume button status is at the second to last byte
         self.data[-1] = button_status  # No scaling for button status
@@ -135,6 +139,10 @@ class SerialRead:
                 
                 if i in [6, 7, 8]:
                     value = value / 100.0 
+                    
+                # Magnetometer data is already in raw format, no need to divide by 100
+                if i in [10, 11, 12]:
+                    value = value / 100.0                
                             
                 self.data[i] = value
                    # A custom counter to count the notifications received
